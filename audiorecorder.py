@@ -9,6 +9,7 @@ import wave
 import time
 import io
 
+
 FORMAT = pyaudio.paInt16 
 SHORT_NORMALIZE = (1.0/32768.0)
 CHANNELS = 2

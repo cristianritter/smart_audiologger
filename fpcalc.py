@@ -1,7 +1,10 @@
 import subprocess
 import audiorecorder
 from datetime import date, datetime
+import shutil
 #create a ramdisk to use because rw disk stressfull
+
+
 
 def calculate_fingerprints(filename):
     fpcalc_out = subprocess.check_output('fpcalc -raw -length 5 %s'
@@ -41,19 +44,24 @@ while (1):
     if (tt.amplitude < 0.015):
         print("silence")
         if (printar != 1):
-            adiciona_linha_log("silencio")
+            adiciona_linha_log("Amplitude: {}, Similaridade: {} - Silencio".format(tt.amplitude, soma))
             printar = 1
     elif (soma < 10):
         print("noise")
         if (printar != 2):
-            adiciona_linha_log("fora do ar")
+            adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
             printar = 2
  
     else:
         print("not noise")
         if (printar != 3):
-            adiciona_linha_log("operacao normal")
+            adiciona_linha_log("Operação Normal")
             printar = 3
+    
+    if (printar != 3):
+        dataFormatada = datetime.now().strftime('audios_salvos/%d%m%Y_%H%M%S.wav')
+        shutil.copyfile("temp.wav", dataFormatada)
+
  
         
 
