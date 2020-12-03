@@ -1,53 +1,40 @@
 #!/usr/bin/python
-
-# open a microphone in pyAudio and listen for taps
-
 import pyaudio
 import struct
 import math
 import wave
 import time
 import io
+import parse_config
+import os
 
+configuration = parse_config.ConfPacket()
+configs = configuration.load_config('FILES, AUDIO_PARAM')
 
 FORMAT = pyaudio.paInt16 
 SHORT_NORMALIZE = (1.0/32768.0)
-CHANNELS = 2
-RATE = 44100  
-INPUT_BLOCK_TIME = 5
+CHANNELS = int(configs['AUDIO_PARAM']['channels'])
+RATE = int(configs['AUDIO_PARAM']['rate'])  
+INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 INPUT_FRAMES_PER_BLOCK = int(RATE*INPUT_BLOCK_TIME)
 
 def get_rms( block ):
-    # RMS amplitude is defined as the square root of the 
-    # mean over time of the square of the amplitude.
-    # so we need to convert this string of bytes into 
-    # a string of 16-bit samples...
-
-    # we will get one short out for each 
-    # two chars in the string.
     count = len(block)/2
     format = "%dh"%(count)
     shorts = struct.unpack( format, block )
-
-    # iterate over the block.
     sum_squares = 0.0
     for sample in shorts:
         # sample is a signed short in +/- 32768. 
         # normalize it to 1.0
         n = sample * SHORT_NORMALIZE
         sum_squares += n*n
-
     return math.sqrt( sum_squares / count )
 
-class TapTester(object):
+class AudioRec(object):
     amplitude = 0
-    mem_file = io.BytesIO
     def __init__(self):
         self.pa = pyaudio.PyAudio()
         self.stream = self.open_mic_stream()
-
-    def stop(self):
-        self.stream.close()
 
     def find_input_device(self):
         device_index = None            
@@ -77,15 +64,9 @@ class TapTester(object):
                                  frames_per_buffer = INPUT_FRAMES_PER_BLOCK)
         return stream
 
-    def listen(self):
-        try:
-            block = self.stream.read(INPUT_FRAMES_PER_BLOCK)
-        except IOError as e:
-            print( "Error recording: %s"%e )
-            return
-        #self.amplitude = get_rms( block )
-        self.stop
-        wf = wave.open("temp.wav", 'wb')
+    def save_to_file( self, block ):
+        temp_file = os.path.join(configs['FILES']['temp_folder'],'temp.wav')
+        wf = wave.open(temp_file, 'wb')
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(2)
         wf.setframerate(RATE)
@@ -93,8 +74,16 @@ class TapTester(object):
         wf.close()
         time.sleep(1)
 
+    def listen(self):
+        try:
+            block = self.stream.read(INPUT_FRAMES_PER_BLOCK)
+        except IOError as e:
+            print( "Error recording: %s"%e )
+            return
+      #  self.stream.close()
+        self.save_to_file(block)
         self.amplitude = get_rms( block )
 
 if __name__ == "__main__":
-    tt = TapTester()
+    tt = AudioRec()
     tt.listen()
