@@ -33,7 +33,7 @@ def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     print(dataFormatada, texto)
     try:
-        f = open('log.txt', "a")
+        f = open(audiorecorder.configs['FILES']['log_file'], "a")
         f.write(dataFormatada + " " + texto +"\n")
         f.close()
     except Exception as err:
