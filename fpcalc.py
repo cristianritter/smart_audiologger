@@ -3,8 +3,25 @@ import audiorecorder
 from datetime import date, datetime
 import shutil
 import os
+import time
+from threading import Thread
+from pyzabbix import ZabbixMetric, ZabbixSender
+import sys
+
 #its better to create a ramdisk to use because rw disk stressfull
 
+metric = 3
+
+class Waiter(Thread):
+    def run(self):
+        while 1:
+            time.sleep(int(audiorecorder.configs['ZABBIX']['send_metrics_interval']))
+            global metric
+            send_status_metric(metric)
+    
+    def stop(self):
+        sys.exit()
+         
 def calculate_fingerprints(filename):
     fpcalc_out = subprocess.check_output('fpcalc -raw -length 5 %s'
                                     % (filename)).decode()
@@ -22,36 +39,55 @@ def adiciona_linha_log(texto):
     except Exception as err:
         print(dataFormatada, err)
 
+def send_status_metric(value):
+    packet = [
+        ZabbixMetric(audiorecorder.configs['ZABBIX']['hostname'], audiorecorder.configs['ZABBIX']['key'], value)
+    ]
+    ZabbixSender(zabbix_server=audiorecorder.configs['ZABBIX']['zabbix_server'], zabbix_port=int(audiorecorder.configs['ZABBIX']['port'])).send(packet)
+
+def convert_to_mp3(wav_file, mp3_file):
+    cmd = 'lame %s %s --silent' % (wav_file,mp3_file)
+    subprocess.call(cmd, shell=True)
+
+
 tt = audiorecorder.AudioRec()
 
-printar = 0
-while (1):
-    tt.listen()
-    finger1 = calculate_fingerprints(audiorecorder.configs['FILES']['sample_file'])
-    temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
-    finger2 = calculate_fingerprints(temp_file)
-    soma = 0
-    for idx, item in enumerate(finger1):
-        cont = (bin(int(finger1[idx]) ^ int(finger2[idx])).count("1"))
-        soma += cont
-    soma /= len(finger1)
+Waiter().start()
 
-    if (tt.amplitude < 0.012):
-        print("silence")
-        if (printar != 1):
-            adiciona_linha_log("Amplitude: {}, Similaridade: {} - Silencio".format(tt.amplitude, soma))
-            printar = 1
-    elif (soma < 9):
-        print("noise")
-        if (printar != 2):
-            adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
-            printar = 2
-    else:
-        print("not noise")
-        if (printar != 3):
-            adiciona_linha_log("Operação Normal")
-            printar = 3  
-    if (printar != 3):
-        dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.wav')
-        dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
-        shutil.copyfile(temp_file, dest_file)
+while (1):
+    try:
+        tt.listen()
+        finger1 = calculate_fingerprints(os.path.join(audiorecorder.parse_config.ROOT_DIR, audiorecorder.configs['FILES']['sample_file']))
+        temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
+        finger2 = calculate_fingerprints(temp_file)
+        soma = 0
+        for idx, item in enumerate(finger1):
+            cont = (bin(int(finger1[idx]) ^ int(finger2[idx])).count("1"))
+            soma += cont
+        soma /= len(finger1)
+
+        if (tt.amplitude < float(audiorecorder.configs['DETECTION_PARAM']['silence_offset'])):
+            print("silence")
+            if (metric != 1):
+                adiciona_linha_log("Amplitude: {}, Similaridade: {} - Silencio".format(tt.amplitude, soma))
+                metric = 1
+                send_status_metric(metric)
+        elif (soma < float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])):
+            print("noise")
+            if (metric != 2):
+                adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
+                metric = 2
+                send_status_metric(metric)
+        else:
+            print("not noise")
+            if (metric != 0):
+                adiciona_linha_log("Operação Normal")
+                metric = 0  
+        if (metric != 0):
+            dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
+            dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
+            convert_to_mp3(temp_file, dest_file)
+
+    except Exception as err:
+        print (err)
+

@@ -9,7 +9,7 @@ import parse_config
 import os
 
 configuration = parse_config.ConfPacket()
-configs = configuration.load_config('FILES, AUDIO_PARAM')
+configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
 
 FORMAT = pyaudio.paInt16 
 SHORT_NORMALIZE = (1.0/32768.0)
