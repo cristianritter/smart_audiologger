@@ -1,6 +1,6 @@
-*.wav
+
 *.txt
 *.pyc
-*.ini
+
 *.spec
 **/
