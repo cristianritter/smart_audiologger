@@ -11,6 +11,7 @@ import sys
 #its better to create a ramdisk to use because rw disk stressfull
 
 metric = 3
+double_test = 0
 
 class Waiter(Thread):
     def run(self):
@@ -73,11 +74,14 @@ while (1):
                 metric = 1
                 send_status_metric(metric)
         elif (soma < float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])):
-            print("noise")
-            if (metric != 2):
+            print("Apeears be noise, testing again")
+            if (double_test == 0):
+                double_test = 1
+            elif (metric != 2 & double_test == 1):
                 adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
                 metric = 2
                 send_status_metric(metric)
+                double_test = 0
         else:
             print("not noise")
             if (metric != 0):
@@ -85,6 +89,10 @@ while (1):
                 metric = 0  
         if (metric != 0):
             dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
+            dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
+            convert_to_mp3(temp_file, dest_file)
+        elif (double_test == 1):
+            dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S_doubtful.mp3')
             dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
             convert_to_mp3(temp_file, dest_file)
 
