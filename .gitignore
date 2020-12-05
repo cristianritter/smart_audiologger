@@ -1,6 +1,7 @@
 
 *.txt
 *.pyc
-
+*.mp3
+*.wav
 *.spec
 **/

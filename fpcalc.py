@@ -10,9 +10,6 @@ import sys
 
 #its better to create a ramdisk to use because rw disk stressfull
 
-metric = 3
-double_test = 0
-
 class Waiter(Thread):
     def run(self):
         while 1:
@@ -55,46 +52,57 @@ tt = audiorecorder.AudioRec()
 
 Waiter().start()
 
+metric = 3
+double_test = 0
+double_time = ""
+
+
 while (1):
     try:
         tt.listen()
         finger1 = calculate_fingerprints(os.path.join(audiorecorder.parse_config.ROOT_DIR, audiorecorder.configs['FILES']['sample_file']))
         temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
+        temp_doubt = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'doubt.wav')
         finger2 = calculate_fingerprints(temp_file)
         soma = 0
         for idx, item in enumerate(finger1):
             cont = (bin(int(finger1[idx]) ^ int(finger2[idx])).count("1"))
             soma += cont
         soma /= len(finger1)
-
+        dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
+         
         if (tt.amplitude < float(audiorecorder.configs['DETECTION_PARAM']['silence_offset'])):
             print("silence")
             if (metric != 1):
                 adiciona_linha_log("Amplitude: {}, Similaridade: {} - Silencio".format(tt.amplitude, soma))
                 metric = 1
                 send_status_metric(metric)
+        
         elif (soma < float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])):
-            print("Apeears be noise, testing again")
-            if (double_test == 0):
+            if (metric != 2 and double_test == 0):
+                print("Apeears be noise, testing again")
+                shutil.copy(temp_file, temp_doubt)
+                double_name = dataFormatada
                 double_test = 1
-            elif (metric != 2 & double_test == 1):
+            elif (double_test == 1):
+                print("Problema de sintonia detectado..")
                 adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
                 metric = 2
                 send_status_metric(metric)
-                double_test = 0
+                double_test = 2
         else:
-            print("not noise")
+            print("not noise - {}".format(soma))
             if (metric != 0):
                 adiciona_linha_log("Operação Normal")
                 metric = 0  
+        
         if (metric != 0):
-            dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
+            if (double_test == 2 ):
+                shutil.copy(temp_doubt, double_name)
+                double_test = 0
             dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
             convert_to_mp3(temp_file, dest_file)
-        elif (double_test == 1):
-            dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S_doubtful.mp3')
-            dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
-            convert_to_mp3(temp_file, dest_file)
+         
 
     except Exception as err:
         print (err)
