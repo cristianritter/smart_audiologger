@@ -83,7 +83,7 @@ class AudioRec(object):
       #  self.stream.close()
         self.save_to_file(block)
         self.amplitude = get_rms( block )
-
+ 
 if __name__ == "__main__":
     tt = AudioRec()
     tt.listen()

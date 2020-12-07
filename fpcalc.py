@@ -7,6 +7,10 @@ import time
 from threading import Thread
 from pyzabbix import ZabbixMetric, ZabbixSender
 import sys
+import soundfile as sf
+import pyloudnorm as pyln
+
+pyln.normalize.warnings.simplefilter('error', UserWarning)
 
 #its better to create a ramdisk to use because rw disk stressfull
 
@@ -26,6 +30,20 @@ def calculate_fingerprints(filename):
     lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
     lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
     return lista_fp
+
+def clipped_verify(filename):
+    data, rate = sf.read(filename) # load audio
+
+    # measure the loudness first 
+    meter = pyln.Meter(rate) # create BS.1770 meter
+    loudness2 = meter.integrated_loudness(data)
+ 
+    # loudness normalize audio to -12 dB LUFS
+    try:
+        pyln.normalize.loudness(data, loudness2, -12.0)
+        return 0
+    except:
+        return 1
 
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
@@ -80,21 +98,23 @@ while (1):
         
         elif (soma < float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])):
             if (metric != 2 and double_test == 0):
-                print("Apeears be noise, testing again")
+                print("Apeears be noise, testing again...")
                 shutil.copy(temp_file, temp_doubt)
                 double_name = dataFormatada
                 double_test = 1
             elif (double_test == 1):
-                print("Problema de sintonia detectado..")
-                adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
-                metric = 2
-                send_status_metric(metric)
-                double_test = 2
+                if clipped_verify(temp_file) == 1:
+                    print("Problema de sintonia detectado..")
+                    adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
+                    metric = 2
+                    send_status_metric(metric)
+                    double_test = 2
         else:
-            print("not noise - {}".format(soma))
+            print("not noise - Similaridade: {}.".format(soma))
+            double_test = 0  
             if (metric != 0):
                 adiciona_linha_log("Operação Normal")
-                metric = 0  
+                metric = 0
         
         if (metric != 0):
             if (double_test == 2 ):
