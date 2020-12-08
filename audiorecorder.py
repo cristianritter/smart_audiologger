@@ -7,6 +7,7 @@ import time
 import io
 import parse_config
 import os
+import audioop
 
 configuration = parse_config.ConfPacket()
 configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
@@ -18,20 +19,14 @@ RATE = int(configs['AUDIO_PARAM']['rate'])
 INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 INPUT_FRAMES_PER_BLOCK = int(RATE*INPUT_BLOCK_TIME)
 
-def get_rms( block ):
-    count = len(block)/2
-    format = "%dh"%(count)
-    shorts = struct.unpack( format, block )
-    sum_squares = 0.0
-    for sample in shorts:
-        # sample is a signed short in +/- 32768. 
-        # normalize it to 1.0
-        n = sample * SHORT_NORMALIZE
-        sum_squares += n*n
-    return math.sqrt( sum_squares / count )
+def get_rms_mono (block, ch1, ch2):
+    data = audioop.tomono(block, 2, ch1, ch2)
+    rms = audioop.rms(data, 2)
+    return rms
 
 class AudioRec(object):
-    amplitude = 0
+    amplitude_l = 0
+    amplitude_r = 0
     def __init__(self):
         self.pa = pyaudio.PyAudio()
         self.stream = self.open_mic_stream()
@@ -62,7 +57,7 @@ class AudioRec(object):
                                  input = True,
                                  input_device_index = device_index,
                                  frames_per_buffer = INPUT_FRAMES_PER_BLOCK)
-        return stream
+        return stream     
 
     def save_to_file( self, block ):
         temp_file = os.path.join(configs['FILES']['temp_folder'],'temp.wav')
@@ -80,9 +75,11 @@ class AudioRec(object):
         except IOError as e:
             print( "Error recording: %s"%e )
             return
-      #  self.stream.close()
         self.save_to_file(block)
-        self.amplitude = get_rms( block )
+        self.amplitude_l = get_rms_mono(block, 1, 0)
+        self.amplitude_r = get_rms_mono(block, 0, 1)
+        
+
  
 if __name__ == "__main__":
     tt = AudioRec()

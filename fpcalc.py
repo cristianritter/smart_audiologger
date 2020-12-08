@@ -7,10 +7,7 @@ import time
 from threading import Thread
 from pyzabbix import ZabbixMetric, ZabbixSender
 import sys
-import soundfile as sf
-import pyloudnorm as pyln
 
-pyln.normalize.warnings.simplefilter('error', UserWarning)
 
 #its better to create a ramdisk to use because rw disk stressfull
 
@@ -24,27 +21,6 @@ class Waiter(Thread):
     def stop(self):
         sys.exit()
          
-def calculate_fingerprints(filename):
-    fpcalc_out = subprocess.check_output('fpcalc -raw -length 5 %s'
-                                    % (filename)).decode()
-    lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
-    lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
-    return lista_fp
-
-def clipped_verify(filename):
-    data, rate = sf.read(filename) # load audio
-
-    # measure the loudness first 
-    meter = pyln.Meter(rate) # create BS.1770 meter
-    loudness2 = meter.integrated_loudness(data)
- 
-    # loudness normalize audio to -12 dB LUFS
-    try:
-        pyln.normalize.loudness(data, loudness2, -12.0)
-        return 0
-    except:
-        return 1
-
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     print(dataFormatada, texto)
@@ -65,61 +41,44 @@ def convert_to_mp3(wav_file, mp3_file):
     cmd = 'lame %s %s --silent' % (wav_file,mp3_file)
     subprocess.call(cmd, shell=True)
 
-
 tt = audiorecorder.AudioRec()
 
 Waiter().start()
 
 metric = 3
-double_test = 0
-double_time = ""
-
 
 while (1):
     try:
         tt.listen()
-        finger1 = calculate_fingerprints(os.path.join(audiorecorder.parse_config.ROOT_DIR, audiorecorder.configs['FILES']['sample_file']))
         temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
-        temp_doubt = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'doubt.wav')
-        finger2 = calculate_fingerprints(temp_file)
-        soma = 0
-        for idx, item in enumerate(finger1):
-            cont = (bin(int(finger1[idx]) ^ int(finger2[idx])).count("1"))
-            soma += cont
-        soma /= len(finger1)
         dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
          
-        if (tt.amplitude < float(audiorecorder.configs['DETECTION_PARAM']['silence_offset'])):
-            print("silence")
+        amplitude_min = int(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
+        if ((tt.amplitude_l < amplitude_min) or (tt.amplitude_r < amplitude_min)):
+            print("silence - Ch1 {} Ch2 {}".format(tt.amplitude_l, tt.amplitude_r))
             if (metric != 1):
-                adiciona_linha_log("Amplitude: {}, Similaridade: {} - Silencio".format(tt.amplitude, soma))
+                if tt.amplitude_l < amplitude_min and tt.amplitude_l < amplitude_min:
+                    adiciona_linha_log("Both channel - Silencio L+R:{}".format (tt.amplitude_l+tt.amplitude_r))
+                elif tt.amplitude_l < amplitude_min:                
+                    adiciona_linha_log("Ch1 Amplitude: {}, - Silencio".format(tt.amplitude_l))
+                elif tt.amplitude_r < amplitude_min:                
+                    adiciona_linha_log("Ch2 Amplitude: {}, - Silencio".format(tt.amplitude_r))
                 metric = 1
                 send_status_metric(metric)
         
-        elif (soma < float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])):
-            if (metric != 2 and double_test == 0):
-                print("Apeears be noise, testing again...")
-                shutil.copy(temp_file, temp_doubt)
-                double_name = dataFormatada
-                double_test = 1
-            elif (double_test == 1):
-                if clipped_verify(temp_file) == 1:
-                    print("Problema de sintonia detectado..")
-                    adiciona_linha_log("Amplitude: {}, Similaridade: {} - Fora do Ar".format(tt.amplitude, soma))
-                    metric = 2
-                    send_status_metric(metric)
-                    double_test = 2
+        elif (abs(tt.amplitude_l - tt.amplitude_r) < 1):
+            print("fora do ar {} {} ".format(tt.amplitude_l, tt.amplitude_r))
+            if metric != 2:
+                adiciona_linha_log("Both channel - Fora do AR",)
+                metric = 2
+                send_status_metric(metric)
+       
         else:
-            print("not noise - Similaridade: {}.".format(soma))
-            double_test = 0  
+            print("not noise {} {}".format(tt.amplitude_l, tt.amplitude_r))
             if (metric != 0):
-                adiciona_linha_log("Operação Normal")
+                adiciona_linha_log("Operação Normal {} {}".format(tt.amplitude_l, tt.amplitude_r))
                 metric = 0
-        
-        if (metric != 0):
-            if (double_test == 2 ):
-                shutil.copy(temp_doubt, double_name)
-                double_test = 0
+        if metric != 0:
             dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
             convert_to_mp3(temp_file, dest_file)
          
