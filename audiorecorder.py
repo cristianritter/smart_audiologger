@@ -76,7 +76,8 @@ class AudioRec(object):
             print( "Error recording: %s"%e )
             return
         self.save_to_file(block)
-        self.amplitude_l = get_rms_mono(block, 1, 0)
+        gain = float(configs['DETECTION_PARAM']['ch1_gain'])
+        self.amplitude_l = get_rms_mono(block, gain, 0)
         self.amplitude_r = get_rms_mono(block, 0, 1)
         
 
