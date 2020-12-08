@@ -25,8 +25,6 @@ def get_rms_mono (block, ch1, ch2):
     return rms
 
 class AudioRec(object):
-    amplitude_l = 0
-    amplitude_r = 0
     def __init__(self):
         self.pa = pyaudio.PyAudio()
         self.stream = self.open_mic_stream()

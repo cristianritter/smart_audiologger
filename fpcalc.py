@@ -7,6 +7,7 @@ import time
 from threading import Thread
 from pyzabbix import ZabbixMetric, ZabbixSender
 import sys
+import sox
 
 
 #its better to create a ramdisk to use because rw disk stressfull
@@ -17,9 +18,14 @@ class Waiter(Thread):
             time.sleep(int(audiorecorder.configs['ZABBIX']['send_metrics_interval']))
             global metric
             send_status_metric(metric)
-    
-    def stop(self):
-        sys.exit()
+
+def is_stereo(filename):
+    tfm = sox.Transformer()
+    tfm.oops()
+    tfm.set_globals(verbosity=1)
+    tfm.build_file(temp_file,temp_out_of_phase)
+    is_silent = sox.file_info.stat(temp_out_of_phase)
+    return is_silent['RMS     amplitude']
          
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
@@ -51,9 +57,13 @@ while (1):
     try:
         tt.listen()
         temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
+        temp_out_of_phase = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'out_of_phase.wav')
+        
         dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
          
         amplitude_min = int(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
+        stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset']) 
+        stereo = is_stereo(temp_file)
         if ((tt.amplitude_l < amplitude_min) or (tt.amplitude_r < amplitude_min)):
             print("silence - Ch1 {} Ch2 {}".format(tt.amplitude_l, tt.amplitude_r))
             if (metric != 1):
@@ -66,8 +76,8 @@ while (1):
                 metric = 1
                 send_status_metric(metric)
         
-        elif (abs(tt.amplitude_l - tt.amplitude_r) < 1):
-            print("fora do ar {} {} ".format(tt.amplitude_l, tt.amplitude_r))
+        elif (stereo < stereo_min):
+            print("fora do ar {} ".format(stereo))
             if metric != 2:
                 adiciona_linha_log("Both channel - Fora do AR",)
                 metric = 2
@@ -81,6 +91,7 @@ while (1):
         if metric != 0:
             dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
             convert_to_mp3(temp_file, dest_file)
+        print(is_stereo(temp_file))
          
 
     except Exception as err:
