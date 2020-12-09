@@ -9,8 +9,14 @@ from pyzabbix import ZabbixMetric, ZabbixSender
 import sys
 import sox
 
-
 #its better to create a ramdisk to use because rw disk stressfull
+
+temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
+temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
+temp_out_of_phase = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'out_of_phase.wav')
+amplitude_min = int(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
+stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset'])
+similarity_tolerance = float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance']) 
 
 class Waiter(Thread):
     def run(self):
@@ -21,12 +27,30 @@ class Waiter(Thread):
 
 def is_stereo(filename):
     tfm = sox.Transformer()
+    tfm.set_globals(verbosity=0)
     tfm.oops()
-    tfm.set_globals(verbosity=1)
     tfm.build_file(temp_file,temp_out_of_phase)
     is_silent = sox.file_info.stat(temp_out_of_phase)
     return is_silent['RMS     amplitude']
          
+def compair_fingerprint(): 
+    finger1 = calculate_fingerprints(os.path.join(audiorecorder.parse_config.ROOT_DIR, audiorecorder.configs['FILES']['sample_file']))
+    finger2 = calculate_fingerprints(temp_file)
+    soma = 0
+    for idx, item in enumerate(finger1):
+        cont = (bin(int(item) ^ int(finger2[idx])).count("1"))
+        soma += cont
+    soma /= len(finger1)
+    return soma
+
+def calculate_fingerprints(filename):
+    fpcalc_out = subprocess.check_output('fpcalc -raw -length 5 %s'
+                                    % (filename)).decode()
+    lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
+    lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
+    return lista_fp
+
+
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     print(dataFormatada, texto)
@@ -48,22 +72,15 @@ def convert_to_mp3(wav_file, mp3_file):
     subprocess.call(cmd, shell=True)
 
 tt = audiorecorder.AudioRec()
-
 Waiter().start()
-
 metric = 3
 
 while (1):
     try:
-        tt.listen()
-        temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
-        temp_out_of_phase = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'out_of_phase.wav')
-        
+        tt.listen()      
         dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
-         
-        amplitude_min = int(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
-        stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset']) 
         stereo = is_stereo(temp_file)
+        soma = compair_fingerprint()
         if ((tt.amplitude_l < amplitude_min) or (tt.amplitude_r < amplitude_min)):
             print("silence - Ch1 {} Ch2 {}".format(tt.amplitude_l, tt.amplitude_r))
             if (metric != 1):
@@ -74,25 +91,23 @@ while (1):
                 elif tt.amplitude_r < amplitude_min:                
                     adiciona_linha_log("Ch2 Amplitude: {}, - Silencio".format(tt.amplitude_r))
                 metric = 1
-                send_status_metric(metric)
-        
-        elif (stereo < stereo_min):
-            print("fora do ar {} ".format(stereo))
+                send_status_metric(metric)       
+        elif (stereo < stereo_min and soma < similarity_tolerance):
+            print("fora do ar by stereo comparation {} and fingerprint {}".format(stereo,soma))
             if metric != 2:
-                adiciona_linha_log("Both channel - Fora do AR",)
+                adiciona_linha_log("Both channel - Fora do AR - {}".format(stereo))
                 metric = 2
                 send_status_metric(metric)
        
         else:
-            print("not noise {} {}".format(tt.amplitude_l, tt.amplitude_r))
+            print("on air {} {}".format(tt.amplitude_l, tt.amplitude_r))
             if (metric != 0):
                 adiciona_linha_log("Operação Normal {} {}".format(tt.amplitude_l, tt.amplitude_r))
                 metric = 0
         if metric != 0:
             dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
             convert_to_mp3(temp_file, dest_file)
-        print(is_stereo(temp_file))
-         
+        
 
     except Exception as err:
         print (err)

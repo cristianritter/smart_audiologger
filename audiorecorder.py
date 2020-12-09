@@ -22,7 +22,7 @@ INPUT_FRAMES_PER_BLOCK = int(RATE*INPUT_BLOCK_TIME)
 def get_rms_mono (block, ch1, ch2):
     data = audioop.tomono(block, 2, ch1, ch2)
     rms = audioop.rms(data, 2)
-    return rms
+    return rms    
 
 class AudioRec(object):
     def __init__(self):
