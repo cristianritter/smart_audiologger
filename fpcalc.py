@@ -12,11 +12,11 @@ import sox
 #its better to create a ramdisk to use because rw disk stressfull
 
 temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
-temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
 temp_out_of_phase = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'out_of_phase.wav')
 amplitude_min = int(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
 stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset'])
 similarity_tolerance = float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance']) 
+temp_doubt = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'doubt.wav')
 
 class Waiter(Thread):
     def run(self):
@@ -50,7 +50,6 @@ def calculate_fingerprints(filename):
     lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
     return lista_fp
 
-
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     print(dataFormatada, texto)
@@ -74,6 +73,8 @@ def convert_to_mp3(wav_file, mp3_file):
 tt = audiorecorder.AudioRec()
 Waiter().start()
 metric = 3
+double_test = 0
+double_time = ""
 
 while (1):
     try:
@@ -82,7 +83,7 @@ while (1):
         stereo = is_stereo(temp_file)
         soma = compair_fingerprint()
         if ((tt.amplitude_l < amplitude_min) or (tt.amplitude_r < amplitude_min)):
-            print("silence - Ch1 {} Ch2 {}".format(tt.amplitude_l, tt.amplitude_r))
+            print("Silence Detected - Ch1 lvl:{} Ch2 lvl: {}".format(tt.amplitude_l, tt.amplitude_r))
             if (metric != 1):
                 if tt.amplitude_l < amplitude_min and tt.amplitude_l < amplitude_min:
                     adiciona_linha_log("Both channel - Silencio L+R:{}".format (tt.amplitude_l+tt.amplitude_r))
@@ -92,17 +93,24 @@ while (1):
                     adiciona_linha_log("Ch2 Amplitude: {}, - Silencio".format(tt.amplitude_r))
                 metric = 1
                 send_status_metric(metric)       
+        
         elif (stereo < stereo_min and soma < similarity_tolerance):
-            print("fora do ar by stereo comparation {} and fingerprint {}".format(stereo,soma))
-            if metric != 2:
-                adiciona_linha_log("Both channel - Fora do AR - {}".format(stereo))
+            if metric != 2 and double_test == 0:
+                print("Apeears be noise by stereo comparation {} and fingerprint {}".format(stereo,soma))
+                shutil.copy(temp_file, temp_doubt)
+                double_name = dataFormatada
+                double_test = 1
+
+            elif double_test == 1:
+                adiciona_linha_log("Fora do Ar by stereo comparation {} and fingerprint {}".format(stereo,soma))
                 metric = 2
                 send_status_metric(metric)
+                double_test = 0
        
         else:
-            print("on air {} {}".format(tt.amplitude_l, tt.amplitude_r))
+            double_test = 0
             if (metric != 0):
-                adiciona_linha_log("Operação Normal {} {}".format(tt.amplitude_l, tt.amplitude_r))
+                adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo comp:{} fingerprint tol:{}".format(tt.amplitude_l, tt.amplitude_r, stereo, soma))
                 metric = 0
         if metric != 0:
             dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)

@@ -1,19 +1,12 @@
-import soundfile as sf
-import pyloudnorm as pyln
+import requests
 
-pyln.normalize.warnings.simplefilter('error', UserWarning)
+stream_url = 'http://177809y.ha.azioncdn.net/primary/atl_cri.sdp/playlist.m3u8'
 
-if __name__ == "__main__":
-    data, rate = sf.read("R:/temp.wav") # load audio
+r = requests.get(stream_url, stream=True)
 
-    # peak normalize audio to -1 dB
-    peak_normalized_audio = pyln.normalize.peak(data, -1.0)
-
-    # measure the loudness first 
-    meter = pyln.Meter(rate) # create BS.1770 meter
-    loudness2 = meter.integrated_loudness(data)
- 
-    # loudness normalize audio to -12 dB LUFS
-    loudness_normalized_audio = pyln.normalize.loudness(data, loudness2, -12.0)
-    
-    
+with open('stream.mp3', 'wb') as f:
+    try:
+        for block in r.iter_content(1024):
+            f.write(block)
+    except Exception as err:
+        print(err)

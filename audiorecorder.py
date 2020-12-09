@@ -75,8 +75,8 @@ class AudioRec(object):
             return
         self.save_to_file(block)
         gain = float(configs['DETECTION_PARAM']['ch1_gain'])
-        self.amplitude_l = get_rms_mono(block, gain, 0)
-        self.amplitude_r = get_rms_mono(block, 0, 1)
+        self.amplitude_l = get_rms_mono(block, gain, 0)/1000
+        self.amplitude_r = get_rms_mono(block, 0, 1)/1000
         
 
  

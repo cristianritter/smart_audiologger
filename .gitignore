@@ -6,3 +6,4 @@
 *.spec
 **/__pycache__
 **/
+__pycache__/audiorecorder.cpython-38.pyc
