@@ -22,7 +22,23 @@ INPUT_FRAMES_PER_BLOCK = int(RATE*INPUT_BLOCK_TIME)
 def get_rms_mono (block, ch1, ch2):
     data = audioop.tomono(block, 2, ch1, ch2)
     rms = audioop.rms(data, 2)
-    return rms    
+    return rms
+
+def get_if_clipped (block):
+    count = len(block)/2
+    format = "%dh"%(count)
+    shorts = struct.unpack( format, block )
+    maximo = (max(shorts))
+    soma = 0
+    for sample in shorts:
+        # sample is a signed short in +/- 32768. 
+        # normalize it to 1.0
+        if abs(sample) == 32768:
+            soma += 1
+    retorno = {}
+    retorno['maximo'] = maximo
+    retorno['clippes'] = soma
+    return retorno
 
 class AudioRec(object):
     def __init__(self):
@@ -77,9 +93,11 @@ class AudioRec(object):
         gain = float(configs['DETECTION_PARAM']['ch1_gain'])
         self.amplitude_l = get_rms_mono(block, gain, 0)/1000
         self.amplitude_r = get_rms_mono(block, 0, 1)/1000
-        
+        self.clipped = get_if_clipped(block)
 
  
 if __name__ == "__main__":
     tt = AudioRec()
     tt.listen()
+    print("Com o sistema operando normal, ajuste o nivel de audio até retornar aprox 20k")
+    print("Nivel atual: {}".format(tt.clipped['maximo']))

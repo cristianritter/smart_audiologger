@@ -12,8 +12,9 @@ import sox
 #its better to create a ramdisk to use because rw disk stressfull
 
 temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
+temp_file_eq = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp_eq.wav')
 temp_out_of_phase = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'out_of_phase.wav')
-amplitude_min = int(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
+amplitude_min = float(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
 stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset'])
 similarity_tolerance = float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance']) 
 temp_doubt = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'doubt.wav')
@@ -29,13 +30,21 @@ def is_stereo(filename):
     tfm = sox.Transformer()
     tfm.set_globals(verbosity=0)
     tfm.oops()
+    try:
+        os.remove(temp_out_of_phase)
+    except:
+        pass
     tfm.build_file(temp_file,temp_out_of_phase)
     is_silent = sox.file_info.stat(temp_out_of_phase)
     return is_silent['RMS     amplitude']
          
 def compair_fingerprint(): 
     finger1 = calculate_fingerprints(os.path.join(audiorecorder.parse_config.ROOT_DIR, audiorecorder.configs['FILES']['sample_file']))
-    finger2 = calculate_fingerprints(temp_file)
+    fpcalc_out2 = subprocess.check_output('sox %s %s highpass 2'
+                                    % (temp_file, temp_file_eq)).decode()
+    finger2 = calculate_fingerprints(temp_file_eq)
+    time.sleep(0.1)
+    
     soma = 0
     for idx, item in enumerate(finger1):
         cont = (bin(int(item) ^ int(finger2[idx])).count("1"))
@@ -44,7 +53,7 @@ def compair_fingerprint():
     return soma
 
 def calculate_fingerprints(filename):
-    fpcalc_out = subprocess.check_output('fpcalc -raw -length 5 %s'
+    fpcalc_out = subprocess.check_output('fpcalc -algorithm 5 -channels 2 -raw -length 5 %s'
                                     % (filename)).decode()
     lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
     lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
@@ -95,8 +104,9 @@ while (1):
                 send_status_metric(metric)       
         
         elif (stereo < stereo_min and soma < similarity_tolerance):
+            print("Apeears be noise by stereo comparation {} and fingerprint {}".format(stereo,soma))
+            
             if metric != 2 and double_test == 0:
-                print("Apeears be noise by stereo comparation {} and fingerprint {}".format(stereo,soma))
                 shutil.copy(temp_file, temp_doubt)
                 double_name = dataFormatada
                 double_test = 1
@@ -106,11 +116,20 @@ while (1):
                 metric = 2
                 send_status_metric(metric)
                 double_test = 0
-       
+
+        elif (tt.clipped['clippes'] > 100):
+            print("Clipped audio in {} samples".format(tt.clipped))
+            if metric != 3:
+                adiciona_linha_log("Problemas no AR by clipped counting {}".format(tt.clipped['clippes']))
+                metric = 3
+                send_status_metric(metric)
+                
+            
         else:
             double_test = 0
+            print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{} fingerprint:{}".format(tt.amplitude_l, tt.amplitude_r, stereo, soma))
             if (metric != 0):
-                adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo comp:{} fingerprint tol:{}".format(tt.amplitude_l, tt.amplitude_r, stereo, soma))
+                adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{} fingerprint:{}".format(tt.amplitude_l, tt.amplitude_r, stereo, soma))
                 metric = 0
         if metric != 0:
             dest_file = os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], dataFormatada)
