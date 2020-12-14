@@ -14,7 +14,7 @@ import sox
 configuration = parse_config.ConfPacket()
 configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
 saved_files_folder = os.path.join(configs['FILES']['saved_files_folder'])
-temp_file = os.path.join(configs['FILES']['temp_folder'],'temp.wav')
+temp_folder = configs['FILES']['temp_folder']
 
 FORMAT = pyaudio.paInt16 
 CHANNELS = int(configs['AUDIO_PARAM']['channels'])
@@ -23,6 +23,7 @@ INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 
 class AudioRec(object):
     def __init__(self):
+        self.blocks_count = 0
         self.pa = pyaudio.PyAudio()
         self.stream = self.open_mic_stream()
 
@@ -52,40 +53,37 @@ class AudioRec(object):
         return device_index
 
     def save_block_to_temp_file( self, block ):
-        wf = wave.open(temp_file, 'wb')
+        wf = wave.open(os.path.join(temp_folder, 'temp.wav'), 'wb')
         wf.setnchannels(CHANNELS)
         wf.setsampwidth(2)
         wf.setframerate(RATE)
         wf.writeframes(block)
         wf.close()
-        time.sleep(0.1)
+        time.sleep(0.02)
 
     def append_block_to_hour_file(self, block):
-        mes_ano_dia = datetime.now().strftime('%Y%m%d')
-        mes_ano_dia_hora = datetime.now().strftime('%Y%m%d_%H.mp3')
-        day_dir = os.path.join(configs['FILES']['temp_folder'],mes_ano_dia)
-        definitive_day_dir = os.path.join(configs['FILES']['saved_files_folder'],mes_ano_dia)
-        hour_file = os.path.join(day_dir, mes_ano_dia_hora)
-        definitive_hour_file = os.path.join(definitive_day_dir, mes_ano_dia_hora)
+        definitive_day_dir = os.path.join(configs['FILES']['saved_files_folder'], datetime.now().strftime('%Y%m%d'))
+        definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
 
-        try:
-            os.mkdir(day_dir)
-        except:
-            pass
-        try:
-            shutil.copy(hour_file, hour_file+'.mp3')
-            subprocess.check_output('sox %s %s %s'
-                                    % (hour_file+'.mp3', temp_file, hour_file))
-        except:
-            subprocess.check_output('sox %s %s'
-                                    % (temp_file, hour_file))
-            pass
-        os.remove(hour_file+'.mp3')
-        comprimento = sox.file_info.stat(hour_file)
-        if ( float(comprimento['Length (seconds)']) > 3599 ):
+        data = []
+        hf = wave.open(os.path.join(temp_folder,'hour_file.wav'), 'rb')
+        data.append( [hf.getparams(), hf.readframes(hf.getnframes())] )
+        hf.close()
+        hf = wave.open(os.path.join(temp_folder,'hour_file.wav'), 'wb')
+        hf.setparams(data[0][0])
+        hf.writeframes(data[0][1])
+        hf.writeframes(block)
+        self.blocks_count += 1            
+        hf.close()
+        hf = wave.open(os.path.join(temp_folder,'hour_file.wav'), 'rb')
+        if hf.getnframes() >= (RATE*3600):
             os.mkdir(definitive_day_dir)
-            shutil.copy(hour_file, definitive_hour_file)
-            os.remove(hour_file)
+            subprocess.check_output('sox %s %s'
+                                    % (os.path.join(temp_folder,'hour_file.wav', definitive_hour_file)))
+            
+            os.remove(os.path.join(temp_folder,'hour_file.wav'))
+    
+        hf.close()             
         
     def listen(self):
         try:

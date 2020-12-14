@@ -57,19 +57,21 @@ def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     mes_ano = datetime.now().strftime('_%Y%m')
     print(dataFormatada, texto)
-    print(mes_ano)
     try:
-        f = open(audiorecorder.configs['FILES']['log_file']+mes_ano+'.txt', "a")
+        f = open(audiorecorder.configs['FILES']['log_folder']+'log'+mes_ano+'.txt', "a")
         f.write(dataFormatada + " " + texto +"\n")
         f.close()
     except Exception as err:
         print(dataFormatada, err)
 
 def send_status_metric(value):
-    packet = [
-        ZabbixMetric(audiorecorder.configs['ZABBIX']['hostname'], audiorecorder.configs['ZABBIX']['key'], value)
-    ]
-    ZabbixSender(zabbix_server=audiorecorder.configs['ZABBIX']['zabbix_server'], zabbix_port=int(audiorecorder.configs['ZABBIX']['port'])).send(packet)
+    try:
+        packet = [
+            ZabbixMetric(audiorecorder.configs['ZABBIX']['hostname'], audiorecorder.configs['ZABBIX']['key'], value)
+        ]
+        ZabbixSender(zabbix_server=audiorecorder.configs['ZABBIX']['zabbix_server'], zabbix_port=int(audiorecorder.configs['ZABBIX']['port'])).send(packet)
+    except:
+        pass
 
 def convert_to_mp3(wav_file, mp3_file):
     cmd = 'lame %s %s --silent' % (wav_file,mp3_file)
