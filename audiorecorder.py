@@ -23,7 +23,6 @@ INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 
 class AudioRec(object):
     def __init__(self):
-        self.blocks_count = 0
         self.pa = pyaudio.PyAudio()
         self.stream = self.open_mic_stream()
 
@@ -62,9 +61,6 @@ class AudioRec(object):
         time.sleep(0.02)
 
     def append_block_to_hour_file(self, block):
-        definitive_day_dir = os.path.join(configs['FILES']['saved_files_folder'], datetime.now().strftime('%Y%m%d'))
-        definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
-
         data = []
         hf = wave.open(os.path.join(temp_folder,'hour_file.wav'), 'rb')
         data.append( [hf.getparams(), hf.readframes(hf.getnframes())] )
@@ -73,17 +69,19 @@ class AudioRec(object):
         hf.setparams(data[0][0])
         hf.writeframes(data[0][1])
         hf.writeframes(block)
-        self.blocks_count += 1            
         hf.close()
-        hf = wave.open(os.path.join(temp_folder,'hour_file.wav'), 'rb')
-        if hf.getnframes() >= (RATE*3600):
+
+    def close_hour_file(self):
+        definitive_day_dir = os.path.join(configs['FILES']['saved_files_folder'], datetime.now().strftime('%Y%m%d'))
+        definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
+        try:
             os.mkdir(definitive_day_dir)
-            subprocess.check_output('sox %s %s'
-                                    % (os.path.join(temp_folder,'hour_file.wav', definitive_hour_file)))
-            
-            os.remove(os.path.join(temp_folder,'hour_file.wav'))
-    
-        hf.close()             
+        except:
+            pass
+        subprocess.check_output('sox %s %s'
+                            % (os.path.join(temp_folder,'hour_file.wav'), definitive_hour_file)) 
+        os.remove(os.path.join(temp_folder,'hour_file.wav'))
+
         
     def listen(self):
         try:

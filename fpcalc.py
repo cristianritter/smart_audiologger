@@ -86,6 +86,9 @@ while (1):
     try:
         tt.listen()      
         dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
+        if ( int(datetime.now().strftime('%M%S') ) > (5958 - int(configs['AUDIO_PARAM']['input_block_time']):
+            tt.close_hour_file 
+ 
         stereo = is_stereo(temp_file)
         soma = compair_fingerprint()
         if ((tt.channels_rms_lvl['L'] < amplitude_min) or (tt.channels_rms_lvl['R'] < amplitude_min)):
