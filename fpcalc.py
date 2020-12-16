@@ -58,13 +58,12 @@ def calculate_fingerprints(filename):
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     mes_ano = datetime.now().strftime('_%Y%m')
-    print(dataFormatada, texto)
     try:
         f = open(audiorecorder.configs['FILES']['log_folder']+'log'+mes_ano+'.txt', "a")
         f.write(dataFormatada + " " + texto +"\n")
         f.close()
     except Exception as err:
-        print(dataFormatada, err)
+        print(dataFormatada, "ERRO ao adicionar linha log: ", err)
 
 def send_status_metric(value):
     try:
@@ -96,7 +95,7 @@ def append_files(source, dest):
 
 tt = audiorecorder.AudioRec()
 Waiter().start()
-metric = 0
+metric = 5
 double_test = 0
 fail_name = ""
 
