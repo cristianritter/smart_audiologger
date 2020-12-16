@@ -62,6 +62,8 @@ class AudioRec(object):
 
     def append_block_to_hour_file(self, block):
         data = []
+        if not os.path.isfile(os.path.join(temp_folder,'hour_file.wav')):
+            shutil.copy(os.path.join(temp_folder,'temp.wav'),os.path.join(temp_folder,'hour_file.wav'))
         hf = wave.open(os.path.join(temp_folder,'hour_file.wav'), 'rb')
         data.append( [hf.getparams(), hf.readframes(hf.getnframes())] )
         hf.close()
@@ -80,9 +82,10 @@ class AudioRec(object):
             pass
         subprocess.check_output('sox %s %s'
                             % (os.path.join(temp_folder,'hour_file.wav'), definitive_hour_file)) 
+        time.sleep(30)    
         os.remove(os.path.join(temp_folder,'hour_file.wav'))
 
-        
+    
     def listen(self):
         try:
             block = self.stream.read(RATE*INPUT_BLOCK_TIME)
