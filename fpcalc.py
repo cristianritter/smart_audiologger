@@ -68,8 +68,7 @@ def adiciona_linha_log(texto):
     mes_ano = datetime.now().strftime('_%Y%m')
     try:
         logfilename = configs['FILES']['log_folder']+'log'+mes_ano+'.txt'
-        print(logfilename)
-        f = open(logfilename, 'a+')
+        f = open(logfilename, 'a')
         f.write(dataFormatada + " " + texto +"\n")
         f.close()
     except Exception as err:
@@ -167,12 +166,13 @@ while (1):
         else:
             shutil.copy(temp_file, temp_hour_file)
 
-        if ( int(datetime.now().strftime('%M%S')) > (5956 - int(audiorecorder.configs['AUDIO_PARAM']['input_block_time']))):
-            definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))
+        definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))    
+        definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
+        if int(datetime.now().strftime('%M%S')) <= int(configs['AUDIO_PARAM']['input_block_time']):
             if not os.path.exists(definitive_day_dir):
                 os.mkdir(definitive_day_dir)
-            definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
             convert_wav_to_mp3(temp_hour_file, definitive_hour_file)
+            shutil.rmtree(temp_hour_file)
         
     except Exception as err:
         print (err)

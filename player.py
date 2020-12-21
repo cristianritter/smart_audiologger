@@ -8,6 +8,7 @@ import PySimpleGUI as sg
 from sys import platform as PLATFORM
 import os
 import webbrowser
+import time
 
 PATH = './Assets/'
 BUTTON_DICT = {img[:-4].upper(): PATH + img for img in os.listdir(PATH)}
@@ -317,18 +318,21 @@ def main():
             folder = values['CALENDAR']+'\\'
             sourcepath = os.path.join("\\\\10.40.38.113\\Audiologger\\", folder)
             filename = os.path.join(sourcepath, values['LISTA'][0])
-            print(filename)
+            print(filename)   
             mp.load_single_track(filename)
+            time.sleep(0.2)
+            time_total = "{:02d}:{:02d}".format(*divmod(mp.player.get_length() // 1000, 60))
+            minutos_total = int(time_total[:2])+int(time_total[3:5])/60
             lognm = "log_"+values['LISTA'][0][0:6]+".txt"
             logfile = os.path.join("\\\\10.40.38.113\\Audiologger\\logs\\", lognm)
             f = open(logfile, "r")
             logtext = (values['LISTA'][0][6:8] + '/' + values['LISTA'][0][4:6] + '/' + values['LISTA'][0][:4] + ' ' + values['LISTA'][0][9:11])
-            for x in f:
+            for x in f: #le linhas
                 if logtext in x:
-                    print(x)
-                    pos = int(x[14:16])
+                    pos = int(x[14:16])+int(x[17:19])/60 
                     print(pos)
-                    graph.DrawLine ((13*pos, 0), (13*pos, 20), color='white', width = 5)
+                    param = 800 / minutos_total
+                    graph.DrawLine ((param*pos, 0), (param*pos, 20), color='white', width = 2)
            
 
             #print(values['LISTA'][0])
