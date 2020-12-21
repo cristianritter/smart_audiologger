@@ -172,7 +172,8 @@ while (1):
             if not os.path.exists(definitive_day_dir):
                 os.mkdir(definitive_day_dir)
             convert_wav_to_mp3(temp_hour_file, definitive_hour_file)
-            shutil.rmtree(temp_hour_file)
+            sleep(1)
+            os.remove(temp_hour_file)
         
     except Exception as err:
         print (err)
