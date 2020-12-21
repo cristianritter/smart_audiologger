@@ -7,6 +7,7 @@ import vlc
 import PySimpleGUI as sg
 from sys import platform as PLATFORM
 import os
+import webbrowser
 
 PATH = './Assets/'
 BUTTON_DICT = {img[:-4].upper(): PATH + img for img in os.listdir(PATH)}
@@ -55,11 +56,13 @@ class MediaPlayer:
         col1 = [[
                  sg.In(key='CALENDAR', enable_events=True, visible=False), sg.CalendarButton('', image_filename=BUTTON_DICT['CALENDAR'], pad=(0,0),  
                         button_color=('white', self.default_bg_color), border_width=0, key='CALENDAR', format=('%Y%m%d')),
+                 self.button('START', BUTTON_DICT['START']),
                  self.button('REWIND', BUTTON_DICT['REWIND']),
                  self.button('PAUSE', BUTTON_DICT['PAUSE_OFF']),
                  self.button('PLAY', BUTTON_DICT['PLAY_OFF']),
                  self.button('STOP', BUTTON_DICT['STOP']),
                  self.button('FORWARD', BUTTON_DICT['FORWARD']),
+                 self.button('END', BUTTON_DICT['END'])
                          ]]
                  
 
@@ -68,7 +71,9 @@ class MediaPlayer:
                          size=(45, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
         
         col3 = [     
-            [sg.Listbox(l, size=(40, 25), enable_events=True, key='LISTA')]
+            [sg.Listbox(l, size=(40, 25), enable_events=True, key='LISTA')],
+            [sg.Text('Abrir arquivo de LOG', key = 'LOG', 
+                    enable_events=True, font=(sg.DEFAULT_FONT, 8, 'underline'))]
         ]
 
         # Main GUI layout
@@ -88,7 +93,7 @@ class MediaPlayer:
             sg.Text('00:00', key='TIME_TOTAL'),
             sg.Text('          ', key='TRACKS')],
 
-            [sg.Graph(canvas_size=(900, 20), graph_bottom_left=(-60, 0), graph_top_right=(840, 20), background_color='gray', enable_events=True, key='graph')],
+            [sg.Graph(canvas_size=(900, 20), graph_bottom_left=(-60, 0), graph_top_right=(840, 20), background_color=self.default_bg_color, enable_events=True, key='graph')],
             
             # Button and media information layout (created above)
             [sg.Column(col1), sg.Column(col2)]
@@ -286,6 +291,13 @@ def main():
             mp.load_single_track(None)
         if event == 'PLAYLIST':
             mp.load_playlist_from_file()
+        if event == 'LOG':
+            if (len(values['CALENDAR'])) == 0:
+                continue
+            lognm = "log_"+values['CALENDAR'][0:6]+".txt"
+            logfile = os.path.join("\\\\10.40.38.113\\Audiologger\\logs\\", lognm)
+            webbrowser.open(logfile)
+
         if event == 'CALENDAR':
             folder = values['CALENDAR']+'\\'
             sourcepath = os.path.join("\\\\10.40.38.113\\Audiologger\\", folder)
@@ -295,11 +307,12 @@ def main():
             for e in os.listdir(sourcepath):
                 l.append(e)
                 mp.window['LISTA'].update(l)
+        
         if event == 'LISTA':
             if (len(values['LISTA'])) == 0:
                 continue
             graph = mp.window['graph']  
-            graph.DrawRectangle( (-60, 0), (840,20), fill_color='gray', )
+            graph.DrawRectangle( (-0, 0), (800,20), fill_color='gray' )
             graph.update()
             folder = values['CALENDAR']+'\\'
             sourcepath = os.path.join("\\\\10.40.38.113\\Audiologger\\", folder)

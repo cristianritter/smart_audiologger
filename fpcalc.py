@@ -8,17 +8,25 @@ from threading import Thread
 from pyzabbix import ZabbixMetric, ZabbixSender
 import sox
 import wave
+import parse_config
 
 
 #its better to create a ramdisk to use because rw disk stressfull
+configuration = parse_config.ConfPacket()
+configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
+temp_folder = configs['FILES']['temp_folder']
+definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
 
-temp_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'temp.wav')
-fail_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'fail.wav')
-temp_out_of_phase = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'out_of_phase.wav')
+temp_file = os.path.join(temp_folder,'temp.wav')
+doubt_file = os.path.join(temp_folder,'doubt.wav')
+temp_out_of_phase = os.path.join(temp_folder,'out_of_phase.wav')
+temp_fail_file = os.path.join(temp_folder,'fail.wav')
+temp_hour_file = os.path.join(temp_folder,'hour_file.wav')
+
 amplitude_min = float(audiorecorder.configs['DETECTION_PARAM']['silence_offset']) 
 stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset'])
-similarity_tolerance = float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance']) 
-doubt_file = os.path.join(audiorecorder.configs['FILES']['temp_folder'],'doubt.wav')
+similarity_tolerance = float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])
+
 
 class Waiter(Thread):
     def run(self):
@@ -35,11 +43,11 @@ def is_stereo(filename):
     except:
         pass
     tfm.build_file(temp_file,temp_out_of_phase)
-    is_silent = sox.file_info.stat(temp_out_of_phase)
-    return is_silent['RMS     amplitude']
+    oops_stat = sox.file_info.stat(temp_out_of_phase)
+    return oops_stat['RMS     amplitude']
          
 def compair_fingerprint(): 
-    finger1 = calculate_fingerprints(os.path.join(audiorecorder.parse_config.ROOT_DIR, audiorecorder.configs['FILES']['sample_file']))
+    finger1 = calculate_fingerprints(os.path.join(parse_config.ROOT_DIR, configs['FILES']['sample_file']))
     finger2 = calculate_fingerprints(temp_file)
     soma = 0
     for idx, item in enumerate(finger1):
@@ -59,7 +67,9 @@ def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
     mes_ano = datetime.now().strftime('_%Y%m')
     try:
-        f = open(audiorecorder.configs['FILES']['log_folder']+'log'+mes_ano+'.txt', "a")
+        logfilename = configs['FILES']['log_folder']+'log'+mes_ano+'.txt'
+        print(logfilename)
+        f = open(logfilename, 'a+')
         f.write(dataFormatada + " " + texto +"\n")
         f.close()
     except Exception as err:
@@ -68,15 +78,11 @@ def adiciona_linha_log(texto):
 def send_status_metric(value):
     try:
         packet = [
-            ZabbixMetric(audiorecorder.configs['ZABBIX']['hostname'], audiorecorder.configs['ZABBIX']['key'], value)
+            ZabbixMetric(configs['ZABBIX']['hostname'], configs['ZABBIX']['key'], value)
         ]
-        ZabbixSender(zabbix_server=audiorecorder.configs['ZABBIX']['zabbix_server'], zabbix_port=int(audiorecorder.configs['ZABBIX']['port'])).send(packet)
+        ZabbixSender(zabbix_server=configs['ZABBIX']['zabbix_server'], zabbix_port=int(configs['ZABBIX']['port'])).send(packet)
     except:
         pass
-
-def convert_to_mp3(wav_file, mp3_file):
-    cmd = 'lame %s %s --silent' % (wav_file,mp3_file)
-    subprocess.call(cmd, shell=True)
 
 def append_files(source, dest):
     data = []
@@ -93,6 +99,10 @@ def append_files(source, dest):
     hf.writeframes(data[1][1])
     hf.close()
 
+def convert_wav_to_mp3(source, dest):
+    subprocess.check_output('sox %s %s'
+                            % (source, dest)) 
+
 tt = audiorecorder.AudioRec()
 Waiter().start()
 metric = 5
@@ -102,9 +112,9 @@ fail_name = ""
 while (1):
     try:
         tt.listen()      
-        dataFormatada = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
         stereo = is_stereo(temp_file)
         soma = compair_fingerprint()
+
         if ((tt.channels_rms_lvl['L'] < amplitude_min) or (tt.channels_rms_lvl['R'] < amplitude_min)):
             print("Silence Detected - Ch1 lvl:{} Ch2 lvl: {}".format(tt.channels_rms_lvl['L'], tt.channels_rms_lvl['R']))
             if (metric != 1):
@@ -138,24 +148,31 @@ while (1):
                 metric = 0
  
         if metric == 0:
-            if os.path.exists(fail_file):
+            data_file = datetime.now().strftime('%d%m%Y_%H%M%S.mp3')
+            if os.path.exists(temp_fail_file):
                 subprocess.check_output('sox %s %s'
-                            % (fail_file, os.path.join(audiorecorder.configs['FILES']['saved_files_folder'], fail_name))) 
-                os.remove(fail_file)
-            else:
-                fail_name = dataFormatada
-
+                            % (temp_fail_file, os.path.join(configs['FILES']['saved_files_folder'], data_file))) 
+                os.remove(temp_fail_file)
+            
         if metric != 0:
-            if not os.path.exists(fail_file):
-                shutil.copy(temp_file, fail_file)
+            if not os.path.exists(temp_fail_file):
+                shutil.copy(temp_file, temp_fail_file)
             if double_test == 1:
                 double_test = 0
-                append_files(doubt_file, fail_file)
-            append_files(temp_file, fail_file)
+                append_files(doubt_file, temp_fail_file)
+            append_files(temp_file, temp_fail_file)
 
-        print(int(datetime.now().strftime('%M%S')))
+        if os.path.exists(temp_hour_file):
+            append_files(temp_file, temp_hour_file)
+        else:
+            shutil.copy(temp_file, temp_hour_file)
+
         if ( int(datetime.now().strftime('%M%S')) > (5956 - int(audiorecorder.configs['AUDIO_PARAM']['input_block_time']))):
-            tt.close_hour_file()
+            definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))
+            if not os.path.exists(definitive_day_dir):
+                os.mkdir(definitive_day_dir)
+            definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
+            convert_wav_to_mp3(temp_hour_file, definitive_hour_file)
         
     except Exception as err:
         print (err)
