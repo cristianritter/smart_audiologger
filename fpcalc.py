@@ -1,6 +1,6 @@
 import subprocess
 import audiorecorder
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import shutil
 import os
 import time
@@ -9,6 +9,7 @@ from pyzabbix import ZabbixMetric, ZabbixSender
 import sox
 import wave
 import parse_config
+import threading
 
 
 #its better to create a ramdisk to use because rw disk stressfull
@@ -27,13 +28,34 @@ amplitude_min = float(audiorecorder.configs['DETECTION_PARAM']['silence_offset']
 stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset'])
 similarity_tolerance = float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])
 
+last_closed_hour = 30
 
-class Waiter(Thread):
+tt = audiorecorder.AudioRec()
+metric = 5
+double_test = 0
+fail_name = ""
+
+class Main(Thread):
     def run(self):
         while 1:
-            time.sleep(int(audiorecorder.configs['ZABBIX']['send_metrics_interval']))
-            global metric
-            send_status_metric(metric)
+            main()
+            time.sleep(1)
+
+def close_hour_file():
+    definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
+    definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
+    print(datetime.now().strftime('%M%S'))
+    if int(datetime.now().strftime('%M%S')) > int(configs['AUDIO_PARAM']['input_block_time']):
+        global last_closed_hour
+        if last_closed_hour != int(datetime.now().strftime('%H')):
+            last_closed_hour = int(datetime.now().strftime('%H'))
+            if not os.path.exists(definitive_day_dir):
+                os.mkdir(definitive_day_dir)
+            convert_wav_to_mp3(temp_hour_file, definitive_hour_file)
+            shutil.copy(temp_file, temp_hour_file)
+            time.sleep(1)
+          #  os.remove(temp_hour_file)
+    time.sleep(1)
 
 def is_stereo(filename):
     tfm = sox.Transformer()
@@ -74,10 +96,12 @@ def adiciona_linha_log(texto):
     except Exception as err:
         print(dataFormatada, "ERRO ao adicionar linha log: ", err)
 
-def send_status_metric(value):
+def send_status_metric():
+    time.sleep(int(audiorecorder.configs['ZABBIX']['send_metrics_interval']))
+    global metric
     try:
         packet = [
-            ZabbixMetric(configs['ZABBIX']['hostname'], configs['ZABBIX']['key'], value)
+            ZabbixMetric(configs['ZABBIX']['hostname'], configs['ZABBIX']['key'], metric)
         ]
         ZabbixSender(zabbix_server=configs['ZABBIX']['zabbix_server'], zabbix_port=int(configs['ZABBIX']['port'])).send(packet)
     except:
@@ -97,29 +121,23 @@ def append_files(source, dest):
     hf.writeframes(data[0][1])
     hf.writeframes(data[1][1])
     hf.close()
-
+ 
 def convert_wav_to_mp3(source, dest):
     subprocess.check_output('sox %s %s'
                             % (source, dest)) 
 
-tt = audiorecorder.AudioRec()
-Waiter().start()
-metric = 5
-double_test = 0
-fail_name = ""
-
-while (1):
+def main():
+    global metric
     try:
         tt.listen()      
         stereo = is_stereo(temp_file)
         soma = compair_fingerprint()
-
         if ((tt.channels_rms_lvl['L'] < amplitude_min) or (tt.channels_rms_lvl['R'] < amplitude_min)):
             print("Silence Detected - Ch1 lvl:{} Ch2 lvl: {}".format(tt.channels_rms_lvl['L'], tt.channels_rms_lvl['R']))
             if (metric != 1):
                 adiciona_linha_log("Silence Detected - Ch1 lvl:{} Ch2 lvl: {}".format(tt.channels_rms_lvl['L'], tt.channels_rms_lvl['R']))
                 metric = 1
-                send_status_metric(metric)       
+                #send_status_metric()       
         
         elif (stereo < stereo_min and soma < similarity_tolerance):
             print("Apeears be noise by stereo comparation {} and fingerprint {}".format(stereo,soma))
@@ -131,14 +149,14 @@ while (1):
             elif double_test == 1:
                 adiciona_linha_log("Fora do Ar by stereo comparation {} and fingerprint {}".format(stereo,soma))
                 metric = 2
-                send_status_metric(metric)
+                #send_status_metric()
        
         elif (tt.clipped['clipped_count'] > 100):
             print("Clipped audio in {} samples".format(tt.clipped))
             if metric != 3:
                 adiciona_linha_log("Problemas no AR by clipped counting {}".format(tt.clipped['clippes']))
                 metric = 3
-                send_status_metric(metric)
+                #send_status_metric()
                  
         else:
             print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{} fingerprint:{}".format(tt.channels_rms_lvl['L'], tt.channels_rms_lvl['R'], stereo, soma))
@@ -163,17 +181,14 @@ while (1):
 
         if os.path.exists(temp_hour_file):
             append_files(temp_file, temp_hour_file)
-        else:
-            shutil.copy(temp_file, temp_hour_file)
 
-        definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))    
-        definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
-        if int(datetime.now().strftime('%M%S')) <= int(configs['AUDIO_PARAM']['input_block_time']):
-            if not os.path.exists(definitive_day_dir):
-                os.mkdir(definitive_day_dir)
-            convert_wav_to_mp3(temp_hour_file, definitive_hour_file)
-            time.sleep(1)
-            os.remove(temp_hour_file)
+        close_hour_file()
+        #send_status_metric()
         
+
     except Exception as err:
         print (err)
+
+Main().start()
+
+            
