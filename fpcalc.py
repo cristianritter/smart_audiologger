@@ -42,12 +42,14 @@ class Main(Thread):
             time.sleep(1)
 
 def close_hour_file():
+   
     definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
     definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
     print(datetime.now().strftime('%M%S'))
     if int(datetime.now().strftime('%M%S')) > int(configs['AUDIO_PARAM']['input_block_time']):
         global last_closed_hour
         if last_closed_hour != int(datetime.now().strftime('%H')):
+            print("entrou")
             last_closed_hour = int(datetime.now().strftime('%H'))
             if not os.path.exists(definitive_day_dir):
                 os.mkdir(definitive_day_dir)
@@ -140,14 +142,14 @@ def main():
                 #send_status_metric()       
         
         elif (stereo < stereo_min and soma < similarity_tolerance):
-            print("Apeears be noise by stereo comparation {} and fingerprint {}".format(stereo,soma))
+            print("Apeears be noise by stereo comparation {} and fingerprint {:.2f}".format(stereo,soma))
             
             if metric != 2 and double_test == 0:
                 shutil.copy(temp_file, doubt_file)
                 double_test = 1
 
             elif double_test == 1:
-                adiciona_linha_log("Fora do Ar by stereo comparation {} and fingerprint {}".format(stereo,soma))
+                adiciona_linha_log("Fora do Ar by stereo comparation {} and fingerprint {:.2f}".format(stereo,soma))
                 metric = 2
                 #send_status_metric()
        
@@ -159,7 +161,7 @@ def main():
                 #send_status_metric()
                  
         else:
-            print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{} fingerprint:{}".format(tt.channels_rms_lvl['L'], tt.channels_rms_lvl['R'], stereo, soma))
+            print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{} fingerprint:{:.2f}".format(tt.channels_rms_lvl['L'], tt.channels_rms_lvl['R'], stereo, soma))
             if (metric != 0):
                 adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{} fingerprint:{}".format(tt.channels_rms_lvl['L'], tt.channels_rms_lvl['R'], stereo, soma))
                 metric = 0
