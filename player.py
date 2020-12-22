@@ -331,15 +331,8 @@ def main():
                 if logtext in x:
                     pos = int(x[14:16])+int(x[17:19])/60 
                     print(pos)
-                    param = 800 / minutos_total
+                    param = 785 / minutos_total
                     graph.DrawLine ((param*pos, 0), (param*pos, 20), color='white', width = 2)
-           
-
-            #print(values['LISTA'][0])
-      
-            
-       
-
 
 if __name__ == '__main__':
     main()
