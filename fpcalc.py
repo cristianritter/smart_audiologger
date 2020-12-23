@@ -28,9 +28,8 @@ amplitude_min = float(audiorecorder.configs['DETECTION_PARAM']['silence_offset']
 stereo_min = float(audiorecorder.configs['DETECTION_PARAM']['stereo_offset'])
 similarity_tolerance = float(audiorecorder.configs['DETECTION_PARAM']['similarity_tolerance'])
 
-last_closed_hour = 30
-
 tt = audiorecorder.AudioRec()
+last_closed_hour = 30
 metric = 5
 double_test = 0
 fail_name = ""
@@ -41,8 +40,7 @@ class Main(Thread):
             main()
             time.sleep(1)
 
-def close_hour_file():
-   
+def close_hour_file(): 
     definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
     definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
     print(datetime.now().strftime('%M%S'))
@@ -55,9 +53,9 @@ def close_hour_file():
                 os.mkdir(definitive_day_dir)
             if os.path.exists(temp_hour_file):            
                 convert_wav_to_mp3(temp_hour_file, definitive_hour_file)
-            shutil.copy(temp_file, temp_hour_file)
+          #  shutil.copy(temp_file, temp_hour_file)
             time.sleep(1)
-          #  os.remove(temp_hour_file)
+            os.remove(temp_hour_file)
     time.sleep(1)
 
 def is_stereo(filename):

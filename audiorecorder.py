@@ -8,8 +8,6 @@ import os
 import audioop
 from datetime import date, datetime
 import subprocess
-import shutil
-import sox
 
 configuration = parse_config.ConfPacket()
 configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
@@ -57,7 +55,6 @@ class AudioRec(object):
         wf.setframerate(RATE)
         wf.writeframes(block)
         wf.close()
-        time.sleep(0.02)
 
     def listen(self):
         try:
