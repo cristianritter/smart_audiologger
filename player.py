@@ -29,10 +29,11 @@ definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
 l = []
 
 class MediaPlayer:
+    failtimes_list = []
 
     def __init__(self, size, scale=1.0, theme='DarkBlue'):
         """ Media player constructor """
-
+        self.failtimes_list.append(0)
         # Setup media player
         self.instance = vlc.Instance()
         self.list_player = self.instance.media_list_player_new()
@@ -73,8 +74,7 @@ class MediaPlayer:
                  self.button('PAUSE', BUTTON_DICT['PAUSE_OFF']),
                  self.button('PLAY', BUTTON_DICT['PLAY_OFF']),
                  self.button('STOP', BUTTON_DICT['STOP']),
-                 self.button('FORWARD', BUTTON_DICT['FORWARD']),
-                 self.button('END', BUTTON_DICT['END'])
+                 self.button('FORWARD', BUTTON_DICT['FORWARD'])
                          ]]
                  
 
@@ -203,19 +203,57 @@ class MediaPlayer:
             image_filename=BUTTON_DICT['PLAY_OFF'] if self.player.is_playing() else BUTTON_DICT['PLAY_ON'])
         self.player.pause()
 
-    def skip_next(self):
+    def jump_to_begin(self):
+        self.player.set_position(0)
+        self.get_track_info()
+    def jump_next_fail(self):
+        if len(self.failtimes_list) == 0:
+            return
+        destino = 0
+        for item in self.failtimes_list:
+            if (self.player.get_time() / 1000) < item:
+                destino = item
+                break
+            
         """ Called when the skip next button is pressed """
-        self.list_player.next()
-        self.reset_pause_play()
-        if not self.track_cnt == self.track_num:
-            self.track_num += 1
+        tamanho = self.player.get_length() // 1000
+        position = destino / tamanho
+        
+        self.player.set_position(position)
+        self.get_track_info()
+        
 
-    def skip_previous(self):
+        #self.list_player.next()
+        #self.reset_pause_play()
+        #if not self.track_cnt == self.track_num:
+        #    self.track_num += 1
+
+    def jump_previous_fail(self):
         """ Called when the skip previous button is pressed """
-        self.list_player.previous()
-        self.reset_pause_play()
-        if not self.track_num == 1:
-            self.track_num -= 1
+        if len(self.failtimes_list) == 0:
+            return
+        destino = 0
+        for item in reversed(self.failtimes_list):
+            if (self.player.get_time() / 1000) > item:
+                destino = item
+                break
+
+        tamanho = self.player.get_length() // 1000
+        position = destino / tamanho
+        
+        self.player.set_position(position)
+        self.get_track_info()
+            
+        tamanho = self.player.get_length() // 1000
+        position = destino / tamanho
+        
+        self.player.set_position(position)
+        self.get_track_info()
+
+        #self.list_player.previous()
+        #self.reset_pause_play()
+        #if not self.track_num == 1:
+        #    self.track_num -= 1
 
     def reset_pause_play(self):
         """ Reset pause play buttons after skipping tracks """
@@ -240,7 +278,7 @@ class MediaPlayer:
             self.add_media(track)
         if self.media_list.count() > 0:
             self.play()
-        self.skip_next()
+        #self.skip_next()
 
     def load_playlist_from_file(self):
         """ Open text file and load to new media list. Assumes `playlist.txt` is in root directory """
@@ -277,10 +315,11 @@ def main():
 
     # Create the media player
     mp = MediaPlayer(size=(1920, 1080), scale=0.5)
+    
 
     # Main event loop
     while True:
-        event, values = mp.window.read(timeout=1000)
+        event, values = mp.window.read(timeout=20)
         mp.get_track_info()
         if event in (None, 'Exit'):
             break
@@ -288,10 +327,10 @@ def main():
             mp.play()
         if event == 'PAUSE':
             mp.pause()
-        if event == 'SKIP NEXT':
-            mp.skip_next()
-        if event == 'SKIP PREVIOUS':
-            mp.skip_previous()
+        if event == 'FORWARD':
+            mp.jump_next_fail()
+        if event == 'REWIND':
+            mp.jump_previous_fail()
         if event == 'STOP':
             mp.stop()
         if event == 'SOUND':
@@ -301,8 +340,8 @@ def main():
             mp.get_track_info()
         if event == 'PLUS':
             mp.load_single_track(None)
-        if event == 'PLAYLIST':
-            mp.load_playlist_from_file()
+        if event == 'START':
+            mp.jump_to_begin()
         if event == 'LOG':
             if (len(values['CALENDAR'])) == 0:
                 continue
@@ -339,6 +378,8 @@ def main():
             
             mp.load_single_track(filename)
             time.sleep(0.2)
+            mp.list_player.next()
+            mp.failtimes_list.clear()
             time_total = "{:02d}:{:02d}".format(*divmod(mp.player.get_length() // 1000, 60))
             minutos_total = int(time_total[:2])+int(time_total[3:5])/60
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
@@ -347,10 +388,12 @@ def main():
             logtext = (dados[6:8] + '/' + dados[4:6] + '/' + dados[:4] + ' ' + dados[9:11])
             for x in f: #le linhas
                 if logtext in x:
-                    pos = int(x[14:16])+int(x[17:19])/60 
-                    print(pos)
+                    pos = int(x[14:16])+int(x[17:19])/60
+                    mp.failtimes_list.append(pos*60) #seconds
+                    #print(pos*60)
                     param = 785 / minutos_total
                     graph.DrawLine ((param*pos, 0), (param*pos, 20), color='white', width = 2)
+                    print(mp.failtimes_list)
 
 if __name__ == '__main__':
     main()
