@@ -29,6 +29,7 @@ INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 
 attemps = 3
 status = 5
+first = True
 
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
@@ -101,29 +102,38 @@ def file_stats(filename):
     retorno['CH2RMS']=monoch2_stat['RMS     amplitude']
     return retorno
 
+
 class Main(Thread):
+    def create_hour_file(self, duracao):
+        print ("Iniciando gravação arquivo da hora")
+        subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
+                                                % (temp_hour_file, duracao))
+
     def run(self):
         while 1:
-            if int(datetime.now().strftime('%M%S')) > 5959 - 2 * INPUT_BLOCK_TIME:
-                while (int(datetime.now().strftime('%M%S'))!= 0):
-                    pass
+            global first
+            if first == True:
+                first = False
+                self.create_hour_file(3599 - int(datetime.now().strftime('%M'))*60)
+                continue
+            elif int(datetime.now().strftime('%M%S')) > 5959 - INPUT_BLOCK_TIME:
                 definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
                 definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
                 if not os.path.exists(definitive_day_dir):
                     os.mkdir(definitive_day_dir)
                 if os.path.exists(temp_hour_file):            
                     shutil.copy(temp_hour_file, definitive_hour_file)            
-                print ("Iniciando gravação arquivo da hora")
-                print (datetime.now().strftime('%H%M%S'))
-                subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 3559' 
-                                                % (temp_hour_file))
-            time.sleep(15)
+        
+                while (int(datetime.now().strftime('%M%S'))!= 0):
+                    pass
+                self.create_hour_file(3599)
+            time.sleep(INPUT_BLOCK_TIME)
+   
 
 def verificar_silencio(infos):
     if float(infos['CH1RMS']) < silence_offset or float(infos['CH2RMS']) < silence_offset:
-        return 1
-            
-     
+        return 1            
+
 def verificar_oops_RMS():
     log = {}
     log['oopsRMS'] = float(infos['oopsRMS'])
