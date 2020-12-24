@@ -234,7 +234,7 @@ class MediaPlayer:
             return
         destino = 0
         for item in reversed(self.failtimes_list):
-            if (self.player.get_time() / 1000) > item:
+            if ((self.player.get_time() / 1000)-1) > item:
                 destino = item
                 break
 
@@ -380,20 +380,18 @@ def main():
             time.sleep(0.2)
             mp.list_player.next()
             mp.failtimes_list.clear()
-            time_total = "{:02d}:{:02d}".format(*divmod(mp.player.get_length() // 1000, 60))
-            minutos_total = int(time_total[:2])+int(time_total[3:5])/60
+            segundos_total = mp.player.get_length() / 1000
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
             logfile = os.path.join(log_folder, lognm)
             f = open(logfile, "r")
             logtext = (dados[6:8] + '/' + dados[4:6] + '/' + dados[:4] + ' ' + dados[9:11])
             for x in f: #le linhas
                 if logtext in x:
-                    pos = int(x[14:16])+int(x[17:19])/60
-                    mp.failtimes_list.append(pos*60) #seconds
-                    #print(pos*60)
-                    param = 785 / minutos_total
+                    pos = int(x[14:16])*60+int(x[17:19]) #posicao segundos
+                    mp.failtimes_list.append(pos) #seconds
+                    param = 785 / segundos_total
                     graph.DrawLine ((param*pos, 0), (param*pos, 20), color='white', width = 2)
-                    print(mp.failtimes_list)
+                    print(param*pos)
 
 if __name__ == '__main__':
     main()
