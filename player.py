@@ -300,6 +300,9 @@ def main():
     while True:
         event, values = mp.window.read(timeout=20)
         mp.get_track_info()
+        if len(values['LISTA']) > 0:
+            if values['LISTA'][0] == "Last Minutes ...":
+                mp.redraw_fail_positions()
         if event in (None, 'Exit'):
             break
         if event == 'PLAY':
@@ -315,7 +318,6 @@ def main():
         if event == 'TIME':
             mp.player.set_position(values['TIME'])
             mp.get_track_info()
-            mp.redraw_fail_positions()
         if event == 'START':
             mp.jump_to_begin()
         if event == 'LOG':
