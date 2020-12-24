@@ -40,10 +40,13 @@ class Main(Thread):
             main()
             time.sleep(1)
 
+def start_hourfile_recording():
+    fpcalc_out = subprocess.check_output('fpcalc -algorithm 5 -channels 2 -raw %s'
+                                    % (filename)).decode()
+
 def close_hour_file(): 
     definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
     definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
-    print(datetime.now().strftime('%M%S'))
     if int(datetime.now().strftime('%M%S')) > int(configs['AUDIO_PARAM']['input_block_time']):
         global last_closed_hour
         if last_closed_hour != int(datetime.now().strftime('%H')):
@@ -58,16 +61,21 @@ def close_hour_file():
             os.remove(temp_hour_file)
     time.sleep(1)
 
-def is_stereo(filename):
+def file_stats(filename):
     tfm = sox.Transformer()
     tfm.oops()
     try:
         os.remove(temp_out_of_phase)
     except:
         pass
+    print(tfm.stats)
     tfm.build_file(temp_file,temp_out_of_phase)
+    temp_stat = sox.file_info.stat(temp_file)
     oops_stat = sox.file_info.stat(temp_out_of_phase)
-    return oops_stat['RMS     amplitude']
+    retorno = {}
+    retorno['oopsRMS']=oops_stat['RMS     amplitude']
+    retorno['tempRMS']=temp_stat['RMS     amplitude']
+    return 
          
 def compair_fingerprint(): 
     finger1 = calculate_fingerprints(os.path.join(parse_config.ROOT_DIR, configs['FILES']['sample_file']))
