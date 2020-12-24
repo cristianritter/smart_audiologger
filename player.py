@@ -391,7 +391,7 @@ def main():
                     mp.failtimes_list.append(pos) #seconds
                     param = 785 / segundos_total
                     graph.DrawLine ((param*pos, 0), (param*pos, 20), color='white', width = 2)
-                    print(param*pos)
+                    print("{} {}".format(param*pos, pos))
 
 if __name__ == '__main__':
     main()

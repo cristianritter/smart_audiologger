@@ -29,7 +29,6 @@ INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 
 attemps = 3
 status = 5
-first = True
 
 def adiciona_linha_log(texto):
     dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
@@ -111,12 +110,7 @@ class Main(Thread):
 
     def run(self):
         while 1:
-            global first
-            if first == True:
-                first = False
-                self.create_hour_file(3599 - int(datetime.now().strftime('%M'))*60)
-                continue
-            elif int(datetime.now().strftime('%M%S')) > 5959 - INPUT_BLOCK_TIME:
+            if int(datetime.now().strftime('%M%S')) > 5959 - INPUT_BLOCK_TIME:
                 definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
                 definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
                 if not os.path.exists(definitive_day_dir):
