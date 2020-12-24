@@ -6,14 +6,25 @@
 import vlc
 import PySimpleGUI as sg
 from sys import platform as PLATFORM
+from datetime import datetime
 import os
 import webbrowser
 import time
+import parse_config
+
 
 PATH = './Assets/'
 BUTTON_DICT = {img[:-4].upper(): PATH + img for img in os.listdir(PATH)}
 DEFAULT_IMG = PATH + 'background2.png'
 ICON = PATH + 'player.ico'
+
+configuration = parse_config.ConfPacket()
+configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
+temp_folder = configs['FILES']['temp_folder']
+temp_hour_file = os.path.join(temp_folder,'hour_file.wav')
+log_folder = configs['FILES']['log_folder']
+definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
+
 
 l = []
 
@@ -159,17 +170,16 @@ class MediaPlayer:
         """ Show author, title, and elasped time if video is loaded and playing """
         time_elapsed = "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
         time_total = "{:02d}:{:02d}".format(*divmod(self.player.get_length() // 1000, 60))
-        if self.player.is_playing():
+        if self.media_list.count() == 0:
+            self.window['INFO'].update('Open a FILE, STREAM, or PLAYLIST to begin')
+        else:
             message = "{}\n{}".format(self.get_meta(1).upper(), self.get_meta(0))
             self.window['INFO'].update(message)
             self.window['TIME_ELAPSED'].update(time_elapsed)
             self.window['TIME'].update(self.player.get_position())
             self.window['TIME_TOTAL'].update(time_total)
             self.window['TRACKS'].update('{} of {}'.format(self.track_num, self.track_cnt))
-        elif self.media_list.count() == 0:
-            self.window['INFO'].update('Open a FILE, STREAM, or PLAYLIST to begin')
-        else:
-            self.window['INFO'].update('Press PLAY to Start')
+            #self.window['INFO'].update('Press PLAY to Start')
 
     def play(self):
         """ Called when the play button is pressed """
@@ -288,6 +298,7 @@ def main():
             mp.toggle_mute()
         if event == 'TIME':
             mp.player.set_position(values['TIME'])
+            mp.get_track_info()
         if event == 'PLUS':
             mp.load_single_track(None)
         if event == 'PLAYLIST':
@@ -296,18 +307,20 @@ def main():
             if (len(values['CALENDAR'])) == 0:
                 continue
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
-            logfile = os.path.join("\\\\10.40.38.113\\Audiologger\\logs\\", lognm)
+            logfile = os.path.join(log_folder, lognm)
             webbrowser.open(logfile)
 
         if event == 'CALENDAR':
             folder = values['CALENDAR']+'\\'
-            sourcepath = os.path.join("\\\\10.40.38.113\\Audiologger\\", folder)
+            sourcepath = os.path.join(definitive_folder, folder)
             l.clear()
             if not os.path.exists(sourcepath):
                 continue
             for e in os.listdir(sourcepath):
                 l.append(e)
-                mp.window['LISTA'].update(l)
+            if values['CALENDAR'] == datetime.now().strftime('%Y%m%d'):
+                l.append("Last Minutes ...")
+            mp.window['LISTA'].update(l)
         
         if event == 'LISTA':
             if (len(values['LISTA'])) == 0:
@@ -316,17 +329,22 @@ def main():
             graph.DrawRectangle( (-0, 0), (800,20), fill_color='gray' )
             graph.update()
             folder = values['CALENDAR']+'\\'
-            sourcepath = os.path.join("\\\\10.40.38.113\\Audiologger\\", folder)
-            filename = os.path.join(sourcepath, values['LISTA'][0])
-            print(filename)   
+            sourcepath = os.path.join(definitive_folder, folder)
+            if values['LISTA'][0] != "Last Minutes ...":
+                dados = values['LISTA'][0]
+                filename = os.path.join(sourcepath, dados)
+            else:
+                dados = datetime.now().strftime('%Y%m%d_%H.mp3')
+                filename = temp_hour_file             
+            
             mp.load_single_track(filename)
             time.sleep(0.2)
             time_total = "{:02d}:{:02d}".format(*divmod(mp.player.get_length() // 1000, 60))
             minutos_total = int(time_total[:2])+int(time_total[3:5])/60
-            lognm = "log_"+values['LISTA'][0][0:6]+".txt"
-            logfile = os.path.join("\\\\10.40.38.113\\Audiologger\\logs\\", lognm)
+            lognm = "log_"+values['CALENDAR'][0:6]+".txt"
+            logfile = os.path.join(log_folder, lognm)
             f = open(logfile, "r")
-            logtext = (values['LISTA'][0][6:8] + '/' + values['LISTA'][0][4:6] + '/' + values['LISTA'][0][:4] + ' ' + values['LISTA'][0][9:11])
+            logtext = (dados[6:8] + '/' + dados[4:6] + '/' + dados[:4] + ' ' + dados[9:11])
             for x in f: #le linhas
                 if logtext in x:
                     pos = int(x[14:16])+int(x[17:19])/60 

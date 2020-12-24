@@ -21,9 +21,12 @@ temp_monoCH1 = os.path.join(temp_folder,'monoCH1.wav')
 temp_monoCH2 = os.path.join(temp_folder,'monoCH2.wav')
 temp_fail_file = os.path.join(temp_folder,'fail.wav')
 temp_hour_file = os.path.join(temp_folder,'hour_file.wav')
+log_folder = configs['FILES']['log_folder']
 silence_offset = float(configs['DETECTION_PARAM']['silence_offset']) 
 stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
 similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
+INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
+
 attemps = 3
 status = 5
 
@@ -61,7 +64,7 @@ def compair_fingerprint():
     else:
         for_finger = finger1
     soma = 0
-    for idx, item in enumerate(for_finger):
+    for idx, _ in enumerate(for_finger):
         cont = (bin(int(finger1[idx]) ^ int(finger2[idx])).count("1"))
         soma += cont
     soma /= len(finger1)
@@ -101,7 +104,9 @@ def file_stats(filename):
 class Main(Thread):
     def run(self):
         while 1:
-            if int(datetime.now().strftime('%M%S')) == 0:
+            if int(datetime.now().strftime('%M%S')) > 5959 - 2 * INPUT_BLOCK_TIME:
+                while (int(datetime.now().strftime('%M%S'))!= 0):
+                    pass
                 definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
                 definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
                 if not os.path.exists(definitive_day_dir):
@@ -110,9 +115,9 @@ class Main(Thread):
                     shutil.copy(temp_hour_file, definitive_hour_file)            
                 print ("Iniciando gravação arquivo da hora")
                 print (datetime.now().strftime('%H%M%S'))
-                subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 3600' 
+                subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 3559' 
                                                 % (temp_hour_file))
-            time.sleep(1)
+            time.sleep(15)
 
 def verificar_silencio(infos):
     if float(infos['CH1RMS']) < silence_offset or float(infos['CH2RMS']) < silence_offset:
@@ -193,14 +198,18 @@ def verifica_resultados(infos):
     
     else:
         attemps = 3
-        print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.2f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
+        if status != 3:
+            adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.2f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
+            status= 3
+        else:       
+            print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.2f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
 
 
 
 Main().start()
 
 while 1:
-    subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 5'
-                                        % (temp_file))
+    subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d'
+                                        % (temp_file, INPUT_BLOCK_TIME))
     infos = file_stats(temp_file)
     verifica_resultados(infos)
