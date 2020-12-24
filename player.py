@@ -260,54 +260,33 @@ class MediaPlayer:
         self.window['PAUSE'].update(image_filename=BUTTON_DICT['PAUSE_OFF'])
         self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])
 
-    def toggle_mute(self):
-        """ Called when the sound button is pressed """
-        self.window['SOUND'].update(
-            image_filename=BUTTON_DICT['SOUND_ON'] if self.player.audio_get_mute() else BUTTON_DICT['SOUND_OFF'])
-        self.player.audio_set_mute(not self.player.audio_get_mute())        
-
     def load_single_track(self, track):
         """ Open a popup to request url or filepath for single track """
-        #track = sg.PopupGetFile('Browse for local media or enter URL:',
-        #                        title='Load Media')
         if track is None:
             return
         else:
             self.window['INFO'].update('Loading media...')
             self.window.read(1)
             self.add_media(track)
-        if self.media_list.count() > 0:
+        #if self.media_list.count() > 0:
             self.play()
         #self.skip_next()
 
-    def load_playlist_from_file(self):
-        """ Open text file and load to new media list. Assumes `playlist.txt` is in root directory """
-
-        # Read contents of playlist file
-        with open('./playlist.txt', 'r') as f:
-            try:
-                playlist = f.read().splitlines()
-            except IOError:
-                sg.popup_error('There was an error opening the file. Please make sure `playlist.txt` is in\
-                the same path as the media player executable', title='Playlist Error')
-                return
-
-        # Send message to window and update
-        self.window['INFO'].update('Loading playlist...')
-        self.window.read(1)
-
-        # Add each track to the playlist if a valid url or file path
-        for track in playlist:
-            if track.strip():
-                self.add_media(track.replace('\\', '/'))
-
                 # Play this track if player not playing (allows for faster perceived startup)
-                if not self.player.is_playing:
-                    self.play()
+            #    if not self.player.is_playing:
+             #       self.play()
 
         # Increment the track counter
         self.track_cnt = self.media_list.count()
         self.track_num = 1
+    
+    def redraw_fail_positions(self):
+        segundos_total = self.player.get_length() / 1000
+        graph = self.window['graph']  
+        graph.DrawRectangle( (-0, 0), (800,20), fill_color='gray' )
+        graph.update()
+        for item in self.failtimes_list:
+            graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
 
 
 def main():
@@ -333,13 +312,10 @@ def main():
             mp.jump_previous_fail()
         if event == 'STOP':
             mp.stop()
-        if event == 'SOUND':
-            mp.toggle_mute()
         if event == 'TIME':
             mp.player.set_position(values['TIME'])
             mp.get_track_info()
-        if event == 'PLUS':
-            mp.load_single_track(None)
+            mp.redraw_fail_positions()
         if event == 'START':
             mp.jump_to_begin()
         if event == 'LOG':
@@ -362,11 +338,9 @@ def main():
             mp.window['LISTA'].update(l)
         
         if event == 'LISTA':
+            mp.stop()
             if (len(values['LISTA'])) == 0:
                 continue
-            graph = mp.window['graph']  
-            graph.DrawRectangle( (-0, 0), (800,20), fill_color='gray' )
-            graph.update()
             folder = values['CALENDAR']+'\\'
             sourcepath = os.path.join(definitive_folder, folder)
             if values['LISTA'][0] != "Last Minutes ...":
@@ -389,9 +363,8 @@ def main():
                 if logtext in x:
                     pos = int(x[14:16])*60+int(x[17:19]) #posicao segundos
                     mp.failtimes_list.append(pos) #seconds
-                    param = 785 / segundos_total
-                    graph.DrawLine ((param*pos, 0), (param*pos, 20), color='white', width = 2)
-                    print("{} {}".format(param*pos, pos))
-
+            mp.redraw_fail_positions()
+            time.sleep(0.5)
+                   
 if __name__ == '__main__':
     main()
