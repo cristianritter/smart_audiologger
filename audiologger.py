@@ -182,7 +182,7 @@ def verificar_clipped(debug=False):
     hf.close()
     if debug == True:
         return max
-    if contagem > bloco_len*0.01:
+    if contagem > 0:
         return 1
 
 def verifica_resultados(infos):
@@ -207,7 +207,7 @@ def verifica_resultados(infos):
             adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
             status = 1
         else:
-            print("Clipped audio Detected.")
+            print("Clipped audio Detected. Tunning Failure or Source Problem")
     
     elif oops_results['value'] and fingerprint_results['value']:
         if attemps <= 0:
