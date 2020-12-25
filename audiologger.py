@@ -146,7 +146,7 @@ def verificar_silencio(infos):
     if float(infos['CH1RMS']) < silence_offset or float(infos['CH2RMS']) < silence_offset:
         return 1            
 
-def verificar_oops_RMS():
+def verificar_oops_RMS(infos):
     log = {}
     log['oopsRMS'] = float(infos['oopsRMS'])
     log['value'] = 0 
@@ -171,7 +171,7 @@ def verificar_clipped(debug=False):
     bloco_len = hf.getnframes()
     if bloco_len > 200000:
         bloco_len = 200000
-    for i in range(bloco_len):
+    for _ in range(bloco_len):
         wavedata = hf.readframes(1)
         data = struct.unpack("2h", wavedata)
         valor = abs(int(data[0]))
@@ -189,10 +189,11 @@ def verifica_resultados(infos):
     global attemps
     global status
     fingerprint_results = verificar_fingerprint()
-    oops_results = verificar_oops_RMS()
+    oops_results = verificar_oops_RMS(infos)
     if verificar_silencio(infos):
         attemps = 3
         if status != 0:
+            print("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
             adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
             status = 0
         else:
@@ -202,6 +203,7 @@ def verifica_resultados(infos):
     elif verificar_clipped():
         attemps = 3
         if status != 1:
+            print("Clipped audio Detected.")
             adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
             status = 1
         else:
@@ -210,6 +212,7 @@ def verifica_resultados(infos):
     elif oops_results['value'] and fingerprint_results['value']:
         if attemps <= 0:
             if status != 2:
+                print("Tuning failure detected. Stereo Gap {} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                 adiciona_linha_log("Tuning failure detected. Stereo Gap {} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                 status= 2
             else:
@@ -221,6 +224,7 @@ def verifica_resultados(infos):
     else:
         attemps = 3
         if status != 3:
+            print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.2f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
             adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.2f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
             status= 3
         else:       
@@ -234,6 +238,7 @@ def Main():
         subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d'
                                         % (temp_file, INPUT_BLOCK_TIME))
         infos = file_stats(temp_file)
+        print("\n")
         verifica_resultados(infos)
 
 Main()
