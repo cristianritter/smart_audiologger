@@ -347,7 +347,10 @@ def main():
                 filename = os.path.join(sourcepath, dados)
             else:
                 dados = datetime.now().strftime('%Y%m%d_%H.mp3')
-                filename = temp_hour_file             
+                if int(datetime.now().strftime('%H'))%2 != 0: #é impar
+                    filename = temp_hour_file+"_i"
+                else:
+                    filename = temp_hour_file+"_p"           
             mp.load_single_track(filename)
             time.sleep(0.2)
             mp.list_player.next()
