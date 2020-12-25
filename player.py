@@ -30,10 +30,11 @@ l = []
 
 class MediaPlayer:
     failtimes_list = []
-
     def __init__(self, size, scale=1.0, theme='DarkBlue'):
         """ Media player constructor """
         self.failtimes_list.append(0)
+        self.paused = False
+        self.stoped = False
         # Setup media player
         self.instance = vlc.Instance()
         self.list_player = self.instance.media_list_player_new()
@@ -71,15 +72,15 @@ class MediaPlayer:
                         button_color=('white', self.default_bg_color), border_width=0, key='CALENDAR', format=('%Y%m%d')),
                  self.button('START', BUTTON_DICT['START']),
                  self.button('REWIND', BUTTON_DICT['REWIND']),
-                 self.button('PAUSE', BUTTON_DICT['PAUSE_OFF']),
+                # self.button('PAUSE', BUTTON_DICT['PAUSE_OFF']),
                  self.button('PLAY', BUTTON_DICT['PLAY_OFF']),
-                 self.button('STOP', BUTTON_DICT['STOP']),
+               #  self.button('STOP', BUTTON_DICT['STOP']),
                  self.button('FORWARD', BUTTON_DICT['FORWARD'])
                          ]]
                  
 
         # Column layout for media info and instructions
-        col2 = [[sg.Text('Open a FILE, STREAM, or PLAYLIST to begin',
+        col2 = [[sg.Text('Loading...',
                          size=(45, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
         
         col3 = [     
@@ -171,7 +172,7 @@ class MediaPlayer:
         time_elapsed = "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
         time_total = "{:02d}:{:02d}".format(*divmod(self.player.get_length() // 1000, 60))
         if self.media_list.count() == 0:
-            self.window['INFO'].update('Open a FILE, STREAM, or PLAYLIST to begin')
+            self.window['INFO'].update('Pick a date from CALENDAR to START')
         else:
             message = "{}\n{}".format(self.get_meta(1).upper(), self.get_meta(0))
             self.window['INFO'].update(message)
@@ -179,22 +180,28 @@ class MediaPlayer:
             self.window['TIME'].update(self.player.get_position())
             self.window['TIME_TOTAL'].update(time_total)
             self.window['TRACKS'].update('{} of {}'.format(self.track_num, self.track_cnt))
-            #self.window['INFO'].update('Press PLAY to Start')
 
     def play(self):
         """ Called when the play button is pressed """
-        self.list_player.play()
-        self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])
-        self.window['PAUSE'].update(image_filename=BUTTON_DICT['PAUSE_OFF'])
-
+        if self.media_list.count() == 0:
+            return
+        if self.stoped:
+            self.player.play()
+        if self.paused:
+            self.list_player.pause()
+            self.paused = False
+            self.window['PLAY'].update(image_filename=BUTTON_DICT['PAUSE_ON'])
+        elif not self.paused:
+            self.list_player.pause()
+            self.paused = True
+            self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])     
+        
     def stop(self):
         """ Called when the stop button is pressed """
         self.player.stop()
         self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_OFF'])
-        self.window['PAUSE'].update(image_filename=BUTTON_DICT['PAUSE_OFF'])
-        self.window['TIME'].update(value=0)
-        self.window['TIME_ELAPSED'].update('00:00')
-
+        self.stoped = True
+       
     def pause(self):
         """ Called when the pause button is pressed """
         self.window['PAUSE'].update(
@@ -221,12 +228,6 @@ class MediaPlayer:
         
         self.player.set_position(position)
         self.get_track_info()
-        
-
-        #self.list_player.next()
-        #self.reset_pause_play()
-        #if not self.track_cnt == self.track_num:
-        #    self.track_num += 1
 
     def jump_previous_fail(self):
         """ Called when the skip previous button is pressed """
@@ -250,14 +251,9 @@ class MediaPlayer:
         self.player.set_position(position)
         self.get_track_info()
 
-        #self.list_player.previous()
-        #self.reset_pause_play()
-        #if not self.track_num == 1:
-        #    self.track_num -= 1
-
     def reset_pause_play(self):
         """ Reset pause play buttons after skipping tracks """
-        self.window['PAUSE'].update(image_filename=BUTTON_DICT['PAUSE_OFF'])
+       # self.window['PAUSE'].update(image_filename=BUTTON_DICT['PAUSE_OFF'])
         self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])
 
     def load_single_track(self, track):
@@ -295,7 +291,6 @@ def main():
     # Create the media player
     mp = MediaPlayer(size=(1920, 1080), scale=0.5)
     
-
     # Main event loop
     while True:
         event, values = mp.window.read(timeout=20)
@@ -307,8 +302,8 @@ def main():
             break
         if event == 'PLAY':
             mp.play()
-        if event == 'PAUSE':
-            mp.pause()
+       # if event == 'PAUSE':
+       #     mp.pause()
         if event == 'FORWARD':
             mp.jump_next_fail()
         if event == 'REWIND':
@@ -342,8 +337,7 @@ def main():
             
         if event == 'LISTA':
             mp.stop()
-            mp.failtimes_list.clear()
-            
+            mp.failtimes_list.clear()  
             if (len(values['LISTA'])) == 0:
                 continue
             folder = values['CALENDAR']+'\\'
@@ -354,11 +348,9 @@ def main():
             else:
                 dados = datetime.now().strftime('%Y%m%d_%H.mp3')
                 filename = temp_hour_file             
-            
             mp.load_single_track(filename)
             time.sleep(0.2)
             mp.list_player.next()
-            segundos_total = mp.player.get_length() / 1000
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
             logfile = os.path.join(log_folder, lognm)
             f = open(logfile, "r")
