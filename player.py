@@ -332,15 +332,18 @@ def main():
             sourcepath = os.path.join(definitive_folder, folder)
             l.clear()
             if not os.path.exists(sourcepath):
+                mp.window['LISTA'].update(l)
                 continue
             for e in os.listdir(sourcepath):
                 l.append(e)
             if values['CALENDAR'] == datetime.now().strftime('%Y%m%d'):
                 l.append("Last Minutes ...")
             mp.window['LISTA'].update(l)
-        
+            
         if event == 'LISTA':
             mp.stop()
+            mp.failtimes_list.clear()
+            
             if (len(values['LISTA'])) == 0:
                 continue
             folder = values['CALENDAR']+'\\'
@@ -355,7 +358,6 @@ def main():
             mp.load_single_track(filename)
             time.sleep(0.2)
             mp.list_player.next()
-            mp.failtimes_list.clear()
             segundos_total = mp.player.get_length() / 1000
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
             logfile = os.path.join(log_folder, lognm)
