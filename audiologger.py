@@ -20,7 +20,8 @@ temp_normalized = os.path.join(temp_folder,'normalized.wav')
 temp_monoCH1 = os.path.join(temp_folder,'monoCH1.wav')
 temp_monoCH2 = os.path.join(temp_folder,'monoCH2.wav')
 temp_fail_file = os.path.join(temp_folder,'fail.wav')
-temp_hour_file = os.path.join(temp_folder,'hour_file.mp3')
+temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
+temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
 log_folder = configs['FILES']['log_folder']
 silence_offset = float(configs['DETECTION_PARAM']['silence_offset']) 
 stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
@@ -103,44 +104,46 @@ def file_stats(filename):
 
 
 class HorasPares(Thread):
-    def create_hour_file(self, duracao):
-        print ("Iniciando gravação arquivo da hora")
-        subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
-                                                % (temp_hour_file, duracao))
-
     def run(self):
         while 1:
             if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 == 0:
-                definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
-                definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
-                if not os.path.exists(definitive_day_dir):
-                    os.mkdir(definitive_day_dir)
-                if os.path.exists(temp_hour_file):            
-                    shutil.copy(temp_hour_file, definitive_hour_file)                  
                 while (int(datetime.now().strftime('%M%S'))!= 0):
                     pass
-                self.create_hour_file(3599)
+                subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
+                                                % (temp_hour_file_p, 3599))
             time.sleep(INPUT_BLOCK_TIME)
    
 class HorasImpares(Thread):
-    def create_hour_file(self, duracao):
-        print ("Iniciando gravação arquivo da hora")
-        subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
-                                                % (temp_hour_file, duracao))
-
     def run(self):
         while 1:
             if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 != 0:
+                while (int(datetime.now().strftime('%M%S'))!= 0):
+                    pass
+                subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
+                                                % (temp_hour_file_i, 3599))
+            time.sleep(INPUT_BLOCK_TIME)
+
+class copia_arquivos(Thread):
+    def run(self):
+        while 1:
+            if int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 != 0: #é impar
                 definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
                 definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
                 if not os.path.exists(definitive_day_dir):
                     os.mkdir(definitive_day_dir)
-                if os.path.exists(temp_hour_file):            
-                    shutil.copy(temp_hour_file, definitive_hour_file)                   
-                while (int(datetime.now().strftime('%M%S'))!= 0):
-                    pass
-                self.create_hour_file(3599)
-            time.sleep(INPUT_BLOCK_TIME)
+                if os.path.exists(temp_hour_file_p):            
+                    shutil.copy(temp_hour_file_p, definitive_hour_file)
+                    os.remove(temp_hour_file_p)                   
+            elif int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 == 0: #é par
+                definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
+                definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
+                if not os.path.exists(definitive_day_dir):
+                    os.mkdir(definitive_day_dir)
+                if os.path.exists(temp_hour_file_i):            
+                    shutil.copy(temp_hour_file_i, definitive_hour_file)
+                    os.remove(temp_hour_file_i)                   
+            time.sleep(30)
+
 
 def verificar_silencio(infos):
     if float(infos['CH1RMS']) < silence_offset or float(infos['CH2RMS']) < silence_offset:
@@ -232,6 +235,7 @@ def verifica_resultados(infos):
 
 HorasImpares().start()
 HorasPares().start()
+copia_arquivos().start()
 
 def Main():
     while 1:
