@@ -133,6 +133,7 @@ class copia_arquivos(Thread):
                     os.mkdir(definitive_day_dir)
                 if os.path.exists(temp_hour_file_p):            
                     shutil.copy(temp_hour_file_p, definitive_hour_file)
+                    time.sleep(60)
                     os.remove(temp_hour_file_p)                   
             elif int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 == 0: #é par
                 definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
@@ -141,6 +142,7 @@ class copia_arquivos(Thread):
                     os.mkdir(definitive_day_dir)
                 if os.path.exists(temp_hour_file_i):            
                     shutil.copy(temp_hour_file_i, definitive_hour_file)
+                    time.sleep(60)
                     os.remove(temp_hour_file_i)                   
             time.sleep(30)
 
