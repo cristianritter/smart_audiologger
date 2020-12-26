@@ -244,7 +244,8 @@ copia_arquivos().start()
 
 def Main():
     while 1:
-        os.remove(temp_file)
+        if os.path.exists(temp_file)
+            os.remove(temp_file)
         subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d'
                                         % (temp_file, INPUT_BLOCK_TIME))
         infos = file_stats(temp_file)
