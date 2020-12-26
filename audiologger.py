@@ -95,6 +95,11 @@ def file_stats(filename):
     oops_stat = sox.file_info.stat(temp_out_of_phase)
     monoch1_stat = sox.file_info.stat(temp_monoCH1)
     monoch2_stat = sox.file_info.stat(temp_monoCH2)
+    os.remove(temp_monoCH1)
+    os.remove(temp_monoCH2)
+    os.remove(temp_file)
+    os.remove(temp_out_of_phase) 
+    
     retorno = {}
     retorno['oopsRMS']=oops_stat['RMS     amplitude']
     retorno['tempRMS']=temp_stat['RMS     amplitude']
@@ -106,7 +111,7 @@ def file_stats(filename):
 class HorasPares(Thread):
     def run(self):
         while 1:
-            if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 == 0:
+            if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 != 0:
                 while (int(datetime.now().strftime('%M%S'))!= 0):
                     pass
                 subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
@@ -116,7 +121,7 @@ class HorasPares(Thread):
 class HorasImpares(Thread):
     def run(self):
         while 1:
-            if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 != 0:
+            if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 == 0:
                 while (int(datetime.now().strftime('%M%S'))!= 0):
                     pass
                 subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
@@ -133,7 +138,7 @@ class copia_arquivos(Thread):
                     os.mkdir(definitive_day_dir)
                 if os.path.exists(temp_hour_file_p):            
                     shutil.copy(temp_hour_file_p, definitive_hour_file)
-                    time.sleep(60)
+                    time.sleep(10)
                     os.remove(temp_hour_file_p)                   
             elif int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 == 0: #é par
                 definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
@@ -142,7 +147,7 @@ class copia_arquivos(Thread):
                     os.mkdir(definitive_day_dir)
                 if os.path.exists(temp_hour_file_i):            
                     shutil.copy(temp_hour_file_i, definitive_hour_file)
-                    time.sleep(60)
+                    time.sleep(10)
                     os.remove(temp_hour_file_i)                   
             time.sleep(30)
 
