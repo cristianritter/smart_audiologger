@@ -97,9 +97,7 @@ def file_stats(filename):
     monoch2_stat = sox.file_info.stat(temp_monoCH2)
     os.remove(temp_monoCH1)
     os.remove(temp_monoCH2)
-    os.remove(temp_file)
-    os.remove(temp_out_of_phase) 
-    
+    os.remove(temp_out_of_phase)    
     retorno = {}
     retorno['oopsRMS']=oops_stat['RMS     amplitude']
     retorno['tempRMS']=temp_stat['RMS     amplitude']
@@ -246,6 +244,7 @@ copia_arquivos().start()
 
 def Main():
     while 1:
+        os.remove(temp_file)
         subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d'
                                         % (temp_file, INPUT_BLOCK_TIME))
         infos = file_stats(temp_file)
