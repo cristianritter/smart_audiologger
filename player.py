@@ -34,7 +34,7 @@ class MediaPlayer:
         """ Media player constructor """
         self.failtimes_list.append(0)
         self.paused = False
-        self.stoped = False
+   #     self.stoped = False
         # Setup media player
         self.instance = vlc.Instance()
         self.list_player = self.instance.media_list_player_new()
@@ -52,10 +52,6 @@ class MediaPlayer:
         self.player_size = [x*scale for x in size]  # The size of the media output window
         self.window = self.create_window()
         self.check_platform()  # Window handler adj for Linux/Windows/MacOS
-
-        # Unmute the volume if muted
-        if self.player.audio_get_mute():
-            self.toggle_mute()
 
     def button(self, key, image, **kwargs):
         """ Create media player button """
@@ -185,23 +181,22 @@ class MediaPlayer:
         """ Called when the play button is pressed """
         if self.media_list.count() == 0:
             return
-        if self.stoped:
-            self.player.play()
         if self.paused:
             self.list_player.pause()
             self.paused = False
-            self.window['PLAY'].update(image_filename=BUTTON_DICT['PAUSE_ON'])
+            self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])     
         elif not self.paused:
             self.list_player.pause()
             self.paused = True
-            self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])     
+            self.window['PLAY'].update(image_filename=BUTTON_DICT['PAUSE_ON'])
         
     def stop(self):
         """ Called when the stop button is pressed """
         self.player.stop()
         self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_OFF'])
-        self.stoped = True
-       
+        self.paused = False
+        
+
     def pause(self):
         """ Called when the pause button is pressed """
         self.window['PAUSE'].update(
@@ -266,12 +261,7 @@ class MediaPlayer:
             self.add_media(track)
         #if self.media_list.count() > 0:
             self.play()
-        #self.skip_next()
-
-                # Play this track if player not playing (allows for faster perceived startup)
-            #    if not self.player.is_playing:
-             #       self.play()
-
+     
         # Increment the track counter
         self.track_cnt = self.media_list.count()
         self.track_num = 1
@@ -302,14 +292,10 @@ def main():
             break
         if event == 'PLAY':
             mp.play()
-       # if event == 'PAUSE':
-       #     mp.pause()
         if event == 'FORWARD':
             mp.jump_next_fail()
         if event == 'REWIND':
             mp.jump_previous_fail()
-        if event == 'STOP':
-            mp.stop()
         if event == 'TIME':
             mp.player.set_position(values['TIME'])
             mp.get_track_info()
@@ -320,7 +306,8 @@ def main():
                 continue
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
             logfile = os.path.join(log_folder, lognm)
-            webbrowser.open(logfile)
+            if os.path.exists(logfile):
+                webbrowser.open(logfile)
 
         if event == 'CALENDAR':
             folder = values['CALENDAR']+'\\'
