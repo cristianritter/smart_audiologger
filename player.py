@@ -12,8 +12,8 @@ import webbrowser
 import time
 import parse_config
 
-
-PATH = './Assets/'
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
+PATH = os.path.join(ROOT_DIR, 'Assets/') 
 BUTTON_DICT = {img[:-4].upper(): PATH + img for img in os.listdir(PATH)}
 DEFAULT_IMG = PATH + 'background2.png'
 ICON = PATH + 'player.ico'
@@ -35,7 +35,6 @@ class MediaPlayer:
         """ Media player constructor """
         self.failtimes_list.append(0)
         self.paused = False
-   #     self.stoped = False
         # Setup media player
         self.instance = vlc.Instance()
         self.list_player = self.instance.media_list_player_new()
@@ -75,7 +74,6 @@ class MediaPlayer:
                  self.button('FORWARD', BUTTON_DICT['FORWARD'])
                          ]]
                  
-
         # Column layout for media info and instructions
         col2 = [[sg.Text('Loading...',
                          size=(45, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
@@ -209,6 +207,7 @@ class MediaPlayer:
     def jump_to_begin(self):
         self.player.set_position(0)
         self.get_track_info()
+
     def jump_next_fail(self):
         if len(self.failtimes_list) == 0:
             return
@@ -241,15 +240,14 @@ class MediaPlayer:
         self.player.set_position(position)
         self.get_track_info()
             
-        tamanho = self.player.get_length() // 1000
-        position = destino / tamanho
+        #tamanho = self.player.get_length() // 1000
+        #position = destino / tamanho
         
-        self.player.set_position(position)
-        self.get_track_info()
+        #self.player.set_position(position)
+        #self.get_track_info()
 
     def reset_pause_play(self):
         """ Reset pause play buttons after skipping tracks """
-       # self.window['PAUSE'].update(image_filename=BUTTON_DICT['PAUSE_OFF'])
         self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])
 
     def load_single_track(self, track):
@@ -298,6 +296,9 @@ def main():
         if event == 'REWIND':
             mp.jump_previous_fail()
         if event == 'TIME':
+            if values['LISTA'][0] == "Last Minutes ...":
+                if values['Time'] > 0.9:
+                    continue
             mp.player.set_position(values['TIME'])
             mp.get_track_info()
         if event == 'START':
