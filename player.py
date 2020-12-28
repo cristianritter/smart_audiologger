@@ -21,7 +21,8 @@ ICON = PATH + 'player.ico'
 configuration = parse_config.ConfPacket()
 configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
 temp_folder = configs['FILES']['temp_folder']
-temp_hour_file = os.path.join(temp_folder,'hour_file.wav')
+temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
+temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
 log_folder = configs['FILES']['log_folder']
 definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
 
@@ -335,9 +336,9 @@ def main():
             else:
                 dados = datetime.now().strftime('%Y%m%d_%H.mp3')
                 if int(datetime.now().strftime('%H'))%2 != 0: #é impar
-                    filename = temp_hour_file+"_i"
+                    filename = temp_hour_file_i
                 else:
-                    filename = temp_hour_file+"_p"           
+                    filename = temp_hour_file_p           
             mp.load_single_track(filename)
             time.sleep(0.2)
             mp.list_player.next()
