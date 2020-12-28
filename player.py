@@ -297,8 +297,9 @@ def main():
             mp.jump_previous_fail()
         if event == 'TIME':
             if values['LISTA'][0] == "Last Minutes ...":
-                if values['Time'] > 0.9:
-                    continue
+                segundos_total = mp.player.get_length() / 1000
+                if values['TIME'] > 1-(10/segundos_total):
+                   continue
             mp.player.set_position(values['TIME'])
             mp.get_track_info()
         if event == 'START':
