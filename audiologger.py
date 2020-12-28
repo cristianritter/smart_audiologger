@@ -27,6 +27,7 @@ silence_offset = float(configs['DETECTION_PARAM']['silence_offset'])
 stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
 similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
 INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
+AUDIO_COMPRESSION = configs['AUDIO_PARAM']['compression']
 
 attemps = 3
 status = 5
@@ -127,6 +128,9 @@ class HorasImpares(Thread):
             time.sleep(INPUT_BLOCK_TIME)
 
 class copia_arquivos(Thread):
+    def conversao_final(self, filename_s, filename_d):
+        subprocess.check_output('sox %s -C %s %s' 
+                                                % (filename_s, AUDIO_COMPRESSION, filename_d))
     def run(self):
         while 1:
             if int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 != 0: #é impar
@@ -135,8 +139,8 @@ class copia_arquivos(Thread):
                 if not os.path.exists(definitive_day_dir):
                     os.mkdir(definitive_day_dir)
                 if os.path.exists(temp_hour_file_p):            
-                    shutil.copy(temp_hour_file_p, definitive_hour_file)
-                    time.sleep(10)
+                    self.conversao_final(temp_hour_file_p, definitive_hour_file)
+                    time.sleep(200)
                     os.remove(temp_hour_file_p)                   
             elif int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 == 0: #é par
                 definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
@@ -144,8 +148,8 @@ class copia_arquivos(Thread):
                 if not os.path.exists(definitive_day_dir):
                     os.mkdir(definitive_day_dir)
                 if os.path.exists(temp_hour_file_i):            
-                    shutil.copy(temp_hour_file_i, definitive_hour_file)
-                    time.sleep(10)
+                    self.conversao_final(temp_hour_file_i, definitive_hour_file)
+                    time.sleep(200)
                     os.remove(temp_hour_file_i)                   
             time.sleep(30)
 

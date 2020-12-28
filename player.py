@@ -18,17 +18,53 @@ BUTTON_DICT = {img[:-4].upper(): PATH + img for img in os.listdir(PATH)}
 DEFAULT_IMG = PATH + 'background2.png'
 ICON = PATH + 'player.ico'
 
-configuration = parse_config.ConfPacket()
-configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
-temp_folder = configs['FILES']['temp_folder']
-temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
-temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
-log_folder = configs['FILES']['log_folder']
-definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
+def select_config_file(filename):
+    configuration = parse_config.ConfPacket()
+    global configs
+    configs = configuration.load_config('FILES', filename)
+    global temp_folder
+    temp_folder = configs['FILES']['temp_folder']
+    global temp_hour_file_i
+    temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
+    global temp_hour_file_p
+    temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
+    global log_folder
+    log_folder = configs['FILES']['log_folder']
+    global definitive_folder
+    definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
 
 
 l = []
 
+class config_select:
+    # Setup GUI window for output of media
+    def __init__(self, size, scale=1.0, theme='DarkBlue'):
+        self.theme = theme  # This can be changed, but I'd stick with a dark theme
+        self.default_bg_color = sg.LOOK_AND_FEEL_TABLE[self.theme]['BACKGROUND']
+        self.window_size = size  # The size of the GUI window
+        self.player_size = [x*scale for x in size]  # The size of the media output window
+        self.window = self.create_window()
+        #self.check_platform()  # Window handler adj for Linux/Windows/MacOS
+
+    def create_window(self):
+        """ Create GUI instance """
+        sg.change_look_and_feel(self.theme)
+        configs_list = []
+        config_files = os.listdir(ROOT_DIR)
+        for item in config_files:
+            if item[-4:] == '.ini':
+                configs_list.append(item)
+        main_layout = [
+            [sg.Text('Pick a config file ...')],
+            [sg.InputCombo((configs_list), size=(20, 1), key = 'CONFIG')],
+        ] 
+        window = sg.Window('Audiologger NSC', main_layout, element_justification='center', icon=ICON, finalize=True)
+        
+        # Expand the time element so that the row elements are positioned correctly
+        window['CONFIG'].expand(expand_x=True)
+        return window
+
+       
 class MediaPlayer:
     failtimes_list = []
     def __init__(self, size, scale=1.0, theme='DarkBlue'):
@@ -77,8 +113,8 @@ class MediaPlayer:
         # Column layout for media info and instructions
         col2 = [[sg.Text('Loading...',
                          size=(45, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
-        
-        col3 = [     
+
+        col3 = [    
             [sg.Listbox(l, size=(40, 25), enable_events=True, key='LISTA')],
             [sg.Text('Abrir arquivo de LOG', key = 'LOG', 
                     enable_events=True, font=(sg.DEFAULT_FONT, 8, 'underline'))]
@@ -240,12 +276,6 @@ class MediaPlayer:
         self.player.set_position(position)
         self.get_track_info()
             
-        #tamanho = self.player.get_length() // 1000
-        #position = destino / tamanho
-        
-        #self.player.set_position(position)
-        #self.get_track_info()
-
     def reset_pause_play(self):
         """ Reset pause play buttons after skipping tracks """
         self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_ON'])
@@ -278,12 +308,23 @@ def main():
     """ The main program function """
 
     # Create the media player
+
     mp = MediaPlayer(size=(1920, 1080), scale=0.5)
+    lg = config_select(size=(500, 500), scale=0.5)
+    mp.window.Hide()
+    while 1:
+        event, values = lg.window.read(timeout=100)
+        if(len(values['CONFIG']) > 0):
+            select_config_file(values['CONFIG'])
+            break
+    lg.window.Close()
+    time.sleep(0.1)
+    mp.window.UnHide()
     
     # Main event loop
     while True:
         event, values = mp.window.read(timeout=20)
-        mp.get_track_info()
+        mp.get_track_info()       
         if len(values['LISTA']) > 0:
             if values['LISTA'][0] == "Last Minutes ...":
                 mp.redraw_fail_positions()
@@ -296,6 +337,8 @@ def main():
         if event == 'REWIND':
             mp.jump_previous_fail()
         if event == 'TIME':
+            if not len(values['LISTA']) > 0:
+                continue
             if values['LISTA'][0] == "Last Minutes ...":
                 segundos_total = mp.player.get_length() / 1000
                 if values['TIME'] > 1-(10/segundos_total):
