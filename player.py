@@ -56,7 +56,7 @@ class config_select:
                 configs_list.append(item)
         main_layout = [
             [sg.Text('Pick a config file ...')],
-            [sg.InputCombo((configs_list), size=(20, 1), key = 'CONFIG')],
+            [sg.Combo((configs_list), size=(20, 1), key = 'CONFIG')],
         ] 
         window = sg.Window('Audiologger NSC', main_layout, element_justification='center', icon=ICON, finalize=True)
         
@@ -119,10 +119,14 @@ class MediaPlayer:
             [sg.Text('Abrir arquivo de LOG', key = 'LOG', 
                     enable_events=True, font=(sg.DEFAULT_FONT, 8, 'underline'))]
         ]
+        
+        # ------ Menu Definition ------ #      
+        menu_def = [['File', ['Open config', 'Exit']],      
+                    ['Help', 'About...'], ]      
 
         # Main GUI layout
         main_layout = [
-            
+            [sg.Menu(menu_def, tearoff=False)],
             # Media output element -- this is the video output element
             [sg.Image(filename=DEFAULT_IMG, pad=(0, 5), size=self.player_size, key='VID_OUT')],
 
@@ -149,7 +153,7 @@ class MediaPlayer:
 
 
         # Create a PySimpleGUI window from the specified parameters
-        window = sg.Window('Audiologger NSC', main_2col, element_justification='center', icon=ICON, finalize=True)
+        window = sg.Window('Audiologger', main_2col, element_justification='center', icon=ICON, finalize=True)
 
         
         # Expand the time element so that the row elements are positioned correctly
@@ -302,34 +306,47 @@ class MediaPlayer:
         graph.update()
         for item in self.failtimes_list:
             graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
+def select_config_window():
+    lg = config_select(size=(500, 500), scale=0.5)
+    lg.window.force_focus()
+    while 1:
+        event, values = lg.window.read(timeout=100)
+        if event == None:
+            exit()
+        if(len(values['CONFIG']) > 0):
+            if os.path.exists(os.path.join(ROOT_DIR, values['CONFIG'])):
+                select_config_file(values['CONFIG'])
+                break
+    lg.window.Close()
 
 
 def main():
     """ The main program function """
 
     # Create the media player
-
+    select_config_window()
     mp = MediaPlayer(size=(1920, 1080), scale=0.5)
-    lg = config_select(size=(500, 500), scale=0.5)
-    mp.window.Hide()
-    while 1:
-        event, values = lg.window.read(timeout=100)
-        if(len(values['CONFIG']) > 0):
-            select_config_file(values['CONFIG'])
-            break
-    lg.window.Close()
     time.sleep(0.1)
-    mp.window.UnHide()
+    #mp.window.Hide()
+    #mp.window.UnHide()
     
     # Main event loop
     while True:
         event, values = mp.window.read(timeout=20)
-        mp.get_track_info()       
+        mp.get_track_info()  
+        #print(event)     
         if len(values['LISTA']) > 0:
             if values['LISTA'][0] == "Last Minutes ...":
                 mp.redraw_fail_positions()
         if event in (None, 'Exit'):
             break
+        if event == "Open config":
+            print('teste')
+            l.clear()
+            mp.window['LISTA'].update(l)
+            mp.window.Hide()
+            select_config_window()
+            mp.window.UnHide()
         if event == 'PLAY':
             mp.play()
         if event == 'FORWARD':

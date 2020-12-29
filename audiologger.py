@@ -113,7 +113,7 @@ class HorasPares(Thread):
             if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 != 0:
                 while (int(datetime.now().strftime('%M%S'))!= 0):
                     pass
-                subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
+                subprocess.check_output('sox -q -t waveaudio 0 -d %s trim 0 %d' 
                                                 % (temp_hour_file_p, 3599))
             time.sleep(INPUT_BLOCK_TIME)
    
@@ -123,7 +123,7 @@ class HorasImpares(Thread):
             if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 == 0:
                 while (int(datetime.now().strftime('%M%S'))!= 0):
                     pass
-                subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d' 
+                subprocess.check_output('sox -q -t waveaudio 0 -d %s trim 0 %d' 
                                                 % (temp_hour_file_i, 3599))
             time.sleep(INPUT_BLOCK_TIME)
 
@@ -216,7 +216,7 @@ def verifica_resultados(infos):
         attemps = 3
         if status != 1:
             print("Clipped audio Detected.")
-            adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
+            adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high")
             status = 1
         else:
             print("Clipped audio Detected. Tunning Failure or Source Problem")
@@ -250,7 +250,7 @@ def Main():
     while 1:
         if os.path.exists(temp_file):
             os.remove(temp_file)
-        subprocess.check_output('sox -t waveaudio 0 -d %s trim 0 %d'
+        subprocess.check_output('sox -q -t waveaudio 0 -d %s trim 0 %d'
                                         % (temp_file, INPUT_BLOCK_TIME))
         infos = file_stats(temp_file)
         print("\n")
