@@ -38,14 +38,12 @@ l = []
 
 class config_select:
     # Setup GUI window for output of media
-    def __init__(self, size, scale=1.0, theme='DarkBlue'):
+    def __init__(self, size, scale=1.0, theme='Tan'):
         self.theme = theme  # This can be changed, but I'd stick with a dark theme
         self.default_bg_color = sg.LOOK_AND_FEEL_TABLE[self.theme]['BACKGROUND']
         self.window_size = size  # The size of the GUI window
-        self.player_size = [x*scale for x in size]  # The size of the media output window
         self.window = self.create_window()
-        #self.check_platform()  # Window handler adj for Linux/Windows/MacOS
-
+        
     def create_window(self):
         """ Create GUI instance """
         sg.change_look_and_feel(self.theme)
@@ -55,13 +53,15 @@ class config_select:
             if item[-4:] == '.ini':
                 configs_list.append(item)
         main_layout = [
-            [sg.Text('Pick a config file ...')],
-            [sg.Combo((configs_list), size=(20, 1), key = 'CONFIG')],
-        ] 
-        window = sg.Window('Audiologger NSC', main_layout, element_justification='center', icon=ICON, finalize=True)
+            [sg.Text('SmartLogger', font='Courier 45 ', text_color='White', background_color='Black')],
+            [sg.Text('Selecione um arquivo de configuração:', font='Helvetica 12 bold', text_color='Black')],
+            [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15')],
+            [sg.Image('wave.png')],
+         ] 
+        window = sg.Window('SmartLogger', main_layout, element_justification='center', icon=ICON, finalize=True)
         
         # Expand the time element so that the row elements are positioned correctly
-        window['CONFIG'].expand(expand_x=True)
+        window['CONFIG'].expand(expand_y=True)
         return window
 
        
@@ -306,6 +306,7 @@ class MediaPlayer:
         graph.update()
         for item in self.failtimes_list:
             graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
+
 def select_config_window():
     lg = config_select(size=(500, 500), scale=0.5)
     lg.window.force_focus()
@@ -327,8 +328,6 @@ def main():
     select_config_window()
     mp = MediaPlayer(size=(1920, 1080), scale=0.5)
     time.sleep(0.1)
-    #mp.window.Hide()
-    #mp.window.UnHide()
     
     # Main event loop
     while True:
@@ -347,6 +346,8 @@ def main():
             mp.window.Hide()
             select_config_window()
             mp.window.UnHide()
+        if event == 'About...':
+            sg.Popup("Feito por Cristian Ritter - Eng.NSC", title="Sobre o aplicativo")
         if event == 'PLAY':
             mp.play()
         if event == 'FORWARD':

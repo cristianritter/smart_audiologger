@@ -205,11 +205,11 @@ def verifica_resultados(infos):
     if verificar_silencio(infos):
         attemps = 3
         if status != 0:
-            print("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
+            print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
             adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
             status = 0
         else:
-            print("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']))
+            print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
         
     
     elif verificar_clipped():
@@ -225,7 +225,7 @@ def verifica_resultados(infos):
         if attemps <= 0:
             if status != 2:
                 print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
-                adiciona_linha_log("Tuning failure detected. Stereo Gap {} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
+                adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                 status= 2
             else:
                 print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
@@ -236,11 +236,11 @@ def verifica_resultados(infos):
     else:
         attemps = 3
         if status != 3:
-            print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
+            print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
             adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
             status= 3
         else:       
-            print("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
+            print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
 
 HorasImpares().start()
 HorasPares().start()
