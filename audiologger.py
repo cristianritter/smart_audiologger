@@ -9,6 +9,7 @@ import shutil
 import sox
 import struct
 import wave
+import license_verify
 
 configuration = parse_config.ConfPacket()
 configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
@@ -28,12 +29,15 @@ stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
 similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
 INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 AUDIO_COMPRESSION = configs['AUDIO_PARAM']['compression']
+AUDIO_DEVICE = int(configs['AUDIO_PARAM']['device_index'])
 
 attemps = 3
 status = 5
+seconds_delta = INPUT_BLOCK_TIME*attemps*-1
 
-def adiciona_linha_log(texto):
-    dataFormatada = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+
+def adiciona_linha_log(texto, time_offset=0):
+    dataFormatada = (datetime.now()+timedelta(seconds=time_offset)).strftime('%d/%m/%Y %H:%M:%S')
     mes_ano = datetime.now().strftime('_%Y%m')
     try:
         logfilename = configs['FILES']['log_folder']+'log'+mes_ano+'.txt'
@@ -113,8 +117,8 @@ class HorasPares(Thread):
             if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 != 0:
                 while (int(datetime.now().strftime('%M%S'))!= 0):
                     pass
-                subprocess.check_output('sox -q -t waveaudio 0 -d %s trim 0 %d' 
-                                                % (temp_hour_file_p, 3599))
+                subprocess.check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
+                                                % (AUDIO_DEVICE, temp_hour_file_p, 3599))
             time.sleep(INPUT_BLOCK_TIME)
    
 class HorasImpares(Thread):
@@ -123,8 +127,8 @@ class HorasImpares(Thread):
             if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 == 0:
                 while (int(datetime.now().strftime('%M%S'))!= 0):
                     pass
-                subprocess.check_output('sox -q -t waveaudio 0 -d %s trim 0 %d' 
-                                                % (temp_hour_file_i, 3599))
+                subprocess.check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
+                                                % (AUDIO_DEVICE, temp_hour_file_i, 3599))
             time.sleep(INPUT_BLOCK_TIME)
 
 class copia_arquivos(Thread):
@@ -202,6 +206,7 @@ def verifica_resultados(infos):
     global status
     fingerprint_results = verificar_fingerprint()
     oops_results = verificar_oops_RMS(infos)
+    print('- '+configs['FILES']['name']+' -')
     if verificar_silencio(infos):
         attemps = 3
         if status != 0:
@@ -215,17 +220,18 @@ def verifica_resultados(infos):
     elif verificar_clipped():
         attemps = 3
         if status != 1:
-            print("Clipped audio Detected.")
-            adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high")
+            print("Clipped audio detected. Tunning problem or Input volume too high.")
+            adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.")
             status = 1
         else:
-            print("Clipped audio Detected. Tunning Failure or Source Problem")
+            print("Clipped audio detected. Tunning problem or Input volume too high.")
     
     elif oops_results['value'] and fingerprint_results['value']:
         if attemps <= 0:
             if status != 2:
+                global seconds_delta
                 print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
-                adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
+                adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=seconds_delta)
                 status= 2
             else:
                 print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
@@ -242,6 +248,12 @@ def verifica_resultados(infos):
         else:       
             print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
 
+
+License = license_verify.Lic(license_verify.APPS_NAMES[1])
+result = License.verifica()
+if result != 0:
+    exit()
+
 HorasImpares().start()
 HorasPares().start()
 copia_arquivos().start()
@@ -250,8 +262,8 @@ def Main():
     while 1:
         if os.path.exists(temp_file):
             os.remove(temp_file)
-        subprocess.check_output('sox -q -t waveaudio 0 -d %s trim 0 %d'
-                                        % (temp_file, INPUT_BLOCK_TIME))
+        subprocess.check_output('sox -q -t waveaudio %d -d %s trim 0 %d'
+                                        % (AUDIO_DEVICE, temp_file, INPUT_BLOCK_TIME))
         infos = file_stats(temp_file)
         print("\n")
         verifica_resultados(infos)

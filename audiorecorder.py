@@ -43,7 +43,7 @@ class AudioRec(object):
             for keyword in ["mic","input"]:
                 if keyword in devinfo["name"].lower():
                     print( "Found an input: device %d - %s"%(i,devinfo["name"]) )
-                    f.write("Found an input: device %d - %s"%(i,devinfo["name"]) )
+                    f.write("Found an input: device %d - %s\n"%(i,devinfo["name"]) )
         f.close()
         print( "Using device %d - %s"%(device_index,self.pa.get_device_info_by_index(device_index) ["name"]))
         return device_index

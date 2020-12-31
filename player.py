@@ -1,8 +1,9 @@
 """
-    VLC media player for local and online streaming media
-    Author: Israel Dryer
-    Modified: 2020-01-23
+    SmartLogger
+    Author: Cristian Ritter
+    Modified: 2021
 """
+
 import vlc
 import PySimpleGUI as sg
 from sys import platform as PLATFORM
@@ -11,17 +12,18 @@ import os
 import webbrowser
 import time
 import parse_config
+import license_verify
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
-PATH = os.path.join(ROOT_DIR, 'Assets/') 
-BUTTON_DICT = {img[:-4].upper(): PATH + img for img in os.listdir(PATH)}
-DEFAULT_IMG = PATH + 'background2.png'
-ICON = PATH + 'player.ico'
+ASSETS_PATH = os.path.join(ROOT_DIR, 'Assets/') 
+BUTTON_DICT = {img[:-4].upper(): ASSETS_PATH + img for img in os.listdir(ASSETS_PATH)}
+DEFAULT_IMG = ASSETS_PATH + 'background2.png'
+ICON = ASSETS_PATH + 'player.ico'
 
 def select_config_file(filename):
     configuration = parse_config.ConfPacket()
     global configs
-    configs = configuration.load_config('FILES', filename)
+    configs = configuration.load_config('FILES, AUDIO_PARAM', filename)
     global temp_folder
     temp_folder = configs['FILES']['temp_folder']
     global temp_hour_file_i
@@ -32,7 +34,8 @@ def select_config_file(filename):
     log_folder = configs['FILES']['log_folder']
     global definitive_folder
     definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
-
+    global INPUT_BLOCK_TIME
+    INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
 
 l = []
 
@@ -56,7 +59,7 @@ class config_select:
             [sg.Text('SmartLogger', font='Courier 45 ', text_color='White', background_color='Black')],
             [sg.Text('Selecione um arquivo de configuração:', font='Helvetica 12 bold', text_color='Black')],
             [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15')],
-            [sg.Image('wave.png')],
+            [sg.Image(os.path.join(ASSETS_PATH, 'wave.png'))],
          ] 
         window = sg.Window('SmartLogger', main_layout, element_justification='center', icon=ICON, finalize=True)
         
@@ -64,7 +67,6 @@ class config_select:
         window['CONFIG'].expand(expand_y=True)
         return window
 
-       
 class MediaPlayer:
     failtimes_list = []
     def __init__(self, size, scale=1.0, theme='DarkBlue'):
@@ -104,9 +106,7 @@ class MediaPlayer:
                         button_color=('white', self.default_bg_color), border_width=0, key='CALENDAR', format=('%Y%m%d')),
                  self.button('START', BUTTON_DICT['START']),
                  self.button('REWIND', BUTTON_DICT['REWIND']),
-                # self.button('PAUSE', BUTTON_DICT['PAUSE_OFF']),
                  self.button('PLAY', BUTTON_DICT['PLAY_OFF']),
-               #  self.button('STOP', BUTTON_DICT['STOP']),
                  self.button('FORWARD', BUTTON_DICT['FORWARD'])
                          ]]
                  
@@ -155,7 +155,6 @@ class MediaPlayer:
         # Create a PySimpleGUI window from the specified parameters
         window = sg.Window('Audiologger', main_2col, element_justification='center', icon=ICON, finalize=True)
 
-        
         # Expand the time element so that the row elements are positioned correctly
         window['TIME'].expand(expand_x=True)
         return window
@@ -176,7 +175,6 @@ class MediaPlayer:
 
         if track is None:
             return  # User did not provide any information
-
       
          # This is a file path and not an online url
         media = self.instance.media_new(track)
@@ -254,13 +252,12 @@ class MediaPlayer:
         destino = 0
         for item in self.failtimes_list:
             if (self.player.get_time() / 1000) < item:
-                destino = item
+                destino = item - INPUT_BLOCK_TIME
                 break
             
         """ Called when the skip next button is pressed """
         tamanho = self.player.get_length() // 1000
         position = destino / tamanho
-        
         self.player.set_position(position)
         self.get_track_info()
 
@@ -271,7 +268,7 @@ class MediaPlayer:
         destino = 0
         for item in reversed(self.failtimes_list):
             if ((self.player.get_time() / 1000)-1) > item:
-                destino = item
+                destino = item - INPUT_BLOCK_TIME
                 break
 
         tamanho = self.player.get_length() // 1000
@@ -292,7 +289,6 @@ class MediaPlayer:
             self.window['INFO'].update('Loading media...')
             self.window.read(1)
             self.add_media(track)
-        #if self.media_list.count() > 0:
             self.play()
      
         # Increment the track counter
@@ -302,7 +298,7 @@ class MediaPlayer:
     def redraw_fail_positions(self):
         segundos_total = self.player.get_length() / 1000
         graph = self.window['graph']  
-        graph.DrawRectangle( (-0, 0), (800,20), fill_color='gray' )
+        graph.DrawRectangle((-0, 0), (800,20), fill_color='gray')
         graph.update()
         for item in self.failtimes_list:
             graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
@@ -320,6 +316,10 @@ def select_config_window():
                 break
     lg.window.Close()
 
+License = license_verify.Lic(license_verify.APPS_NAMES[0])
+result = License.verifica()
+if result != 0:
+    exit()
 
 def main():
     """ The main program function """
@@ -333,14 +333,12 @@ def main():
     while True:
         event, values = mp.window.read(timeout=20)
         mp.get_track_info()  
-        #print(event)     
         if len(values['LISTA']) > 0:
             if values['LISTA'][0] == "Last Minutes ...":
                 mp.redraw_fail_positions()
         if event in (None, 'Exit'):
             break
         if event == "Open config":
-            print('teste')
             l.clear()
             mp.window['LISTA'].update(l)
             mp.window.Hide()
@@ -377,6 +375,9 @@ def main():
             folder = values['CALENDAR']+'\\'
             sourcepath = os.path.join(definitive_folder, folder)
             l.clear()
+            #if not os.path.ismount(sourcepath):
+            #    sg.PopupAnnoying ("Pasta de arquivos gravados não disponível",title="ERROR" )
+            #    continue
             if not os.path.exists(sourcepath):
                 mp.window['LISTA'].update(l)
                 continue

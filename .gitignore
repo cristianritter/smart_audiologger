@@ -2,7 +2,6 @@
 *.txt
 *.pyc
 *.mp3
-*.wav
 *.spec
 **/__pycache__
 **/
