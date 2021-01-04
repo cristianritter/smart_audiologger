@@ -7,7 +7,8 @@
 import vlc
 import PySimpleGUI as sg
 from sys import platform as PLATFORM
-from datetime import datetime
+from sys import exit as EXIT
+from datetime import datetime, timedelta
 import os
 import webbrowser
 import time
@@ -309,7 +310,7 @@ def select_config_window():
     while 1:
         event, values = lg.window.read(timeout=100)
         if event == None:
-            exit()
+            EXIT()
         if(len(values['CONFIG']) > 0):
             if os.path.exists(os.path.join(ROOT_DIR, values['CONFIG'])):
                 select_config_file(values['CONFIG'])
@@ -319,7 +320,7 @@ def select_config_window():
 License = license_verify.Lic(license_verify.APPS_NAMES[0])
 result = License.verifica()
 if result != 0:
-    exit()
+    EXIT()
 
 def main():
     """ The main program function """
@@ -408,6 +409,10 @@ def main():
             mp.list_player.next()
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
             logfile = os.path.join(log_folder, lognm)
+            if not os.path.exists(logfile):
+                f = open(logfile, 'a')
+                f.write("\n")
+                f.close()
             f = open(logfile, "r")
             logtext = (dados[6:8] + '/' + dados[4:6] + '/' + dados[:4] + ' ' + dados[9:11])
             for x in f: #le linhas
