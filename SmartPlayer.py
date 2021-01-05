@@ -4,16 +4,24 @@
     Modified: 2021
 """
 
-import vlc
 import PySimpleGUI as sg
 from sys import platform as PLATFORM
 from sys import exit as EXIT
+import sys
 from datetime import datetime, timedelta
 import os
 import webbrowser
 import time
 import parse_config
 import license_verify
+
+import os
+os.add_dll_directory(os.getcwd())
+#os.add_dll_directory(r'C:\Program Files\VideoLAN\VLC')
+#os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
+import vlc
+
+sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
 ASSETS_PATH = os.path.join(ROOT_DIR, 'Assets/') 
@@ -233,7 +241,6 @@ class MediaPlayer:
         self.player.stop()
         self.window['PLAY'].update(image_filename=BUTTON_DICT['PLAY_OFF'])
         self.paused = False
-        
 
     def pause(self):
         """ Called when the pause button is pressed """
@@ -252,8 +259,8 @@ class MediaPlayer:
             return
         destino = 0
         for item in self.failtimes_list:
-            if (self.player.get_time() / 1000) < item:
-                destino = item - INPUT_BLOCK_TIME
+            if (self.player.get_time() / 1000) < (item - (INPUT_BLOCK_TIME+5)):
+                destino = item - (INPUT_BLOCK_TIME+5)
                 break
             
         """ Called when the skip next button is pressed """
@@ -268,8 +275,8 @@ class MediaPlayer:
             return
         destino = 0
         for item in reversed(self.failtimes_list):
-            if ((self.player.get_time() / 1000)-1) > item:
-                destino = item - INPUT_BLOCK_TIME
+            if ((self.player.get_time() / 1000)-1) > (item - (INPUT_BLOCK_TIME+5)):
+                destino = item - (INPUT_BLOCK_TIME+5)
                 break
 
         tamanho = self.player.get_length() // 1000
@@ -318,8 +325,9 @@ def select_config_window():
     lg.window.Close()
 
 License = license_verify.Lic(license_verify.APPS_NAMES[0])
-result = License.verifica()
-if result != 0:
+license_result = License.verifica()
+if license_result == 0:
+    sg.popup('Falha ao validar a licença', 'Adquira uma permissão para utilizar o aplicativo')
     EXIT()
 
 def main():
@@ -353,6 +361,7 @@ def main():
             mp.jump_next_fail()
         if event == 'REWIND':
             mp.jump_previous_fail()
+
         if event == 'TIME':
             if not len(values['LISTA']) > 0:
                 continue
@@ -362,8 +371,11 @@ def main():
                    continue
             mp.player.set_position(values['TIME'])
             mp.get_track_info()
+            time.sleep(0.01)
+
         if event == 'START':
             mp.jump_to_begin()
+
         if event == 'LOG':
             if (len(values['CALENDAR'])) == 0:
                 continue
@@ -373,6 +385,8 @@ def main():
                 webbrowser.open(logfile)
 
         if event == 'CALENDAR':
+            mp.stop()
+            mp.add_media()
             folder = values['CALENDAR']+'\\'
             sourcepath = os.path.join(definitive_folder, folder)
             l.clear()

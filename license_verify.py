@@ -11,12 +11,6 @@ license_file = os.path.join(ROOT_DIR, 'license.lic' )
 current_machine_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
 APPS_NAMES = ['SmartLogger Player', 'SmartLogger Gravador']
         
-with urllib.request.urlopen('https://raw.githubusercontent.com/cristianritter/licenses/main/Audiologger') as f:
-    html = f.read().decode('utf-8')
-
-online_licence_list = html.split("\n")
-#print (licence_list)
-
 def adiciona_linha_log(texto, time_offset=0):
     dataFormatada = (datetime.now()+timedelta(seconds=time_offset)).strftime('%d/%m/%Y %H:%M:%S')
     try:
@@ -27,7 +21,19 @@ def adiciona_linha_log(texto, time_offset=0):
     except Exception as err:
         pass
 
-license_content = []
+html = ''
+
+try:
+    with urllib.request.urlopen('https://raw.githubusercontent.com/cristianritter/licenses/main/Audiologger') as f:
+        html = f.read().decode('utf-8')
+except Exception as Err:
+    adiciona_linha_log("Sem conexão com a internet")
+
+online_licence_list = html.split("\n")
+#print (online_licence_list)
+
+
+file_license_content = []
 
 class Lic:
     def __init__(self, app):
@@ -35,16 +41,15 @@ class Lic:
     
     def verifica(self):
         try:
-            f = open(license_file, "r")
-            global license_content
-            license_content = f.readlines()
-            f.close()
-            for idx, item in enumerate(license_content):
-                if '\n' in item:
-                    license_content[idx] = license_content[idx].split('\n')[0]
+            if os.path.exists(license_file):
+                f = open(license_file, "r")
+                global license_content
+                license_content = f.readlines()
+                f.close()
+                for idx, item in enumerate(file_license_content):
+                    if '\n' in item:
+                        file_license_content[idx] = file_license_content[idx].split('\n')[0]
         except Exception as Err:
-            print(Err)
-
             adiciona_linha_log(str(Err))
 
         root_b = ROOT_DIR.encode('UTF-8')
@@ -58,20 +63,21 @@ class Lic:
         uniao_b = "{}{}".format(codigo_de_maquina_dig, app_dig).encode('UTF-8')
         uniao_dig = hashlib.sha224(uniao_b).hexdigest()
         
-        if uniao_dig in license_content:
-            print('Licença verificada')
-            return 0
+        if uniao_dig in file_license_content:
+            #print('Licença verificada localmente')
+            return 'local'
 
         elif uniao_dig in online_licence_list:
-            print('Licença verificada')
-            return 0
+            #print('Licença verificada via internet')
+            return 'online'
      
         else:
-            print("Licença inválida")
-            print("Informe este código de maquina: {}".format(codigo_de_maquina_dig))
+            #print("Licença inválida")
+            #print("Informe este código de maquina: {}".format(codigo_de_maquina_dig))
             adiciona_linha_log("Erro ao verificar a licença do software")
             adiciona_linha_log("Informe este código de maquina: {}".format(codigo_de_maquina_dig))
-            sys.exit()
+            return 0
+            #sys.exit()
            
 def main():
     a = Lic(APPS_NAMES[0])
