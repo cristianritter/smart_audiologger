@@ -70,8 +70,7 @@ class Lic:
         print("Verificando licença de uso para:", self.APPS_NAMES[app_idx])
         final_cod = self.gera_final_app_cod(app_idx)
 
-        self.find_offline()
-        if 1:#final_cod in self.find_offline():
+        if final_cod in self.find_offline():
             print('Licença local validada.')
             return 'local'
 

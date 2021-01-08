@@ -397,9 +397,6 @@ try:
                 folder = values['CALENDAR']+'\\'
                 sourcepath = os.path.join(definitive_folder, folder)
                 l.clear()
-                #if not os.path.ismount(sourcepath):
-                #    sg.PopupAnnoying ("Pasta de arquivos gravados não disponível",title="ERROR" )
-                #    continue
                 if not os.path.exists(sourcepath):
                     mp.window['LISTA'].update(l)
                     continue
