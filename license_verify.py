@@ -83,7 +83,7 @@ class Lic:
             print("Consulte mais informações no arquivo de log")
             adiciona_linha_log("Não foi encontrada uma licença válida. Por favor contate o desenvolvedor.")
             adiciona_linha_log("Email: cristianritter@gmail.com")
-            adiciona_linha_log("Informe este código de maquina: {}".format(self.gera_dev_unique_cod))
+            adiciona_linha_log("Informe este código de maquina: {}".format(self.gera_dev_unique_cod()))
             return 0
            
 def main():

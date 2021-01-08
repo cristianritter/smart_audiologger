@@ -51,6 +51,7 @@ try:
             f.close()
         except Exception as err:
             print(dataFormatada, "ERRO ao adicionar linha log: ", err)
+            adiciona_linha_log(err)
 
     def append_files(source, dest):
         data = []
@@ -234,7 +235,6 @@ try:
         elif oops_results['value'] and fingerprint_results['value']:
             if attemps <= 0:
                 if status != 2:
-                    global seconds_delta
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                     adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=INPUT_BLOCK_TIME*-1*default_attempts_value)
                     status= 2

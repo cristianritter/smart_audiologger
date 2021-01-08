@@ -72,12 +72,12 @@ try:
                 if item[-4:] == '.ini':
                     configs_list.append(item)
             main_layout = [
-                [sg.Text('SmartLogger', font='Courier 45 ', text_color='White', background_color='Black')],
+                [sg.Text('SmartPlayer', font='Courier 45 ', text_color='White', background_color='Black')],
                 [sg.Text('Selecione um arquivo de configuração:', font='Helvetica 12 bold', text_color='Black')],
                 [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15')],
                 [sg.Image(os.path.join(ASSETS_PATH, 'wave.png'))],
             ] 
-            window = sg.Window('SmartLogger', main_layout, element_justification='center', icon=ICON, finalize=True)
+            window = sg.Window('SmartPlayer', main_layout, element_justification='center', icon=ICON, finalize=True)
             
             # Expand the time element so that the row elements are positioned correctly
             window['CONFIG'].expand(expand_y=True)
