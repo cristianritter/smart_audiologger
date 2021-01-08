@@ -18,7 +18,13 @@ import license_verify
 import os
 os.add_dll_directory(os.getcwd())
 #os.add_dll_directory(r'C:\Program Files\VideoLAN\VLC')
-#os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
+
+try:
+    os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
+except Exception as Err:
+    sg.popup(str(Err))
+    EXIT()
+
 import vlc
 
 sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
@@ -162,7 +168,7 @@ class MediaPlayer:
 
 
         # Create a PySimpleGUI window from the specified parameters
-        window = sg.Window('Audiologger', main_2col, element_justification='center', icon=ICON, finalize=True)
+        window = sg.Window('SmartLogger', main_2col, element_justification='center', icon=ICON, finalize=True)
 
         # Expand the time element so that the row elements are positioned correctly
         window['TIME'].expand(expand_x=True)
@@ -354,7 +360,7 @@ def main():
             select_config_window()
             mp.window.UnHide()
         if event == 'About...':
-            sg.Popup("Feito por Cristian Ritter - Eng.NSC", title="Sobre o aplicativo")
+            sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
         if event == 'PLAY':
             mp.play()
         if event == 'FORWARD':

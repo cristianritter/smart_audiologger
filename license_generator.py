@@ -6,7 +6,7 @@ import os
 current_machine_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
 print(current_machine_id)
 
-lista = ['SmartLogger Player', 'SmartLogger Gravador']
+APPS_NAMES = ['SmartLogger Player', 'SmartLogger Gravador']
 
 class license_layout:
     # Setup GUI window for output of media
@@ -24,20 +24,20 @@ class license_layout:
         global lista
         main_layout = [
             [sg.Text("Selecione o produto:")],
-            [sg.Combo(lista, readonly=True, key='APP')],
+            [sg.Combo(APPS_NAMES, readonly=True, key='APP')],
             [sg.Text("Identificador de maquina:")],
             [sg.InputText(key='INPUT')],
             [sg.Button('Generate..')],
             [sg.Multiline('Preencha o campo Identificador de maquina e clique em Gerar', disabled=True, key='RESULT')],
          ] 
-        window = sg.Window('Audiologger NSC', main_layout, element_justification='center', finalize=True)
+        window = sg.Window('Gerador de Licenças ', main_layout, element_justification='center', finalize=True)
         
         # Expand the time element so that the row elements are positioned correctly
         #window['CONFIG'].expand(expand_x=True)
         return window
 
 def main():
-    lg = license_layout(size=(500, 500), scale=0.5)
+    lg = license_layout(size=(600, 800), scale=0.5)
     lg.window.force_focus()
     while 1:
         event, values = lg.window.read(timeout=100)

@@ -18,26 +18,26 @@ def adiciona_linha_log(texto, time_offset=0):
         f = open(logfilename, 'a')
         f.write(dataFormatada + " " + texto +"\n")
         f.close()
-    except Exception as err:
+    except:
         pass
 
-html = ''
+html_text = ''
 
 try:
+    print("Verificando licença online ...")
     with urllib.request.urlopen('https://raw.githubusercontent.com/cristianritter/licenses/main/Audiologger') as f:
-        html = f.read().decode('utf-8')
-except Exception as Err:
-    adiciona_linha_log("Sem conexão com a internet")
+        html_text = f.read().decode('utf-8')
+except:
+    print("Não foi possível verificar a licença online, por favor verifique sua conexão com a internet.")
 
-online_licence_list = html.split("\n")
-#print (online_licence_list)
+online_licence_list = html_text.split("\n")
 
 
 file_license_content = []
 
 class Lic:
-    def __init__(self, app):
-       self.app = app
+    def __init__(self, app_name):
+       self.app_name = app_name
     
     def verifica(self):
         try:
@@ -56,7 +56,7 @@ class Lic:
         root_dig = hashlib.sha224(root_b).hexdigest()
         maq_b = current_machine_id.encode('UTF-8')
         maq_dig = hashlib.sha224(maq_b).hexdigest()
-        app_b = self.app.encode('UTF-8')
+        app_b = self.app_name.encode('UTF-8')
         app_dig = hashlib.sha224(app_b).hexdigest()
         codig_de_maquina_b = "{}{}".format(maq_dig, root_dig).encode('UTF-8')
         codigo_de_maquina_dig = hashlib.sha224(codig_de_maquina_b).hexdigest()
@@ -64,20 +64,20 @@ class Lic:
         uniao_dig = hashlib.sha224(uniao_b).hexdigest()
         
         if uniao_dig in file_license_content:
-            #print('Licença verificada localmente')
+            print('Licença local validada.')
             return 'local'
 
         elif uniao_dig in online_licence_list:
-            #print('Licença verificada via internet')
+            print('Licença online validada.')
             return 'online'
      
         else:
-            #print("Licença inválida")
-            #print("Informe este código de maquina: {}".format(codigo_de_maquina_dig))
-            adiciona_linha_log("Erro ao verificar a licença do software")
+            print("Não foi encontrada uma licença válida. Por favor contate o desenvolvedor.")
+            print("Consulte mais informações no arquivo de log")
+            adiciona_linha_log("Não foi encontrada uma licença válida. Por favor contate o desenvolvedor.")
+            adiciona_linha_log("Email: cristianritter@gmail.com")
             adiciona_linha_log("Informe este código de maquina: {}".format(codigo_de_maquina_dig))
             return 0
-            #sys.exit()
            
 def main():
     a = Lic(APPS_NAMES[0])
