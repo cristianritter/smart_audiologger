@@ -254,9 +254,8 @@ try:
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
 
 
-    print ("Verificando Licença... ")
-    License = license_verify.Lic(license_verify.APPS_NAMES[1])
-    result = License.verifica()
+    License = license_verify.Lic()
+    result = License.verifica(1)
     if result == 0:
         print('Falha ao validar a licença', 'Adquira uma permissão para utilizar o aplicativo')
         time.sleep(50)
@@ -275,7 +274,7 @@ try:
             infos = file_stats(temp_file)
             print("\n")
             verifica_resultados(infos)
-
+    print("Operação iniciada!")
     Main()
 except Exception as Err:
     print (Err)

@@ -10,10 +10,8 @@ try:
         f = open(devices_file, "w")
         for i in range( pa.get_device_count() ):     
             devinfo = pa.get_device_info_by_index(i)   
-            for keyword in ["mic","input"]:
-                if keyword in devinfo["name"].lower():
-                    print( "Found an input: device %d - %s"%(i,devinfo["name"]) )
-                    f.write("Found an input: device %d - %s\n"%(i,devinfo["name"]) )
+            print( "Found an input: device %d - %s"%(i,devinfo["name"]) )
+            f.write("Found an input: device %d - %s\n"%(i,devinfo["name"]) )
         f.close()
 
     find_input_device()
@@ -21,3 +19,4 @@ try:
 except Exception as ERR:
     print(ERR)
     time.sleep(10)
+

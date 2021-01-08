@@ -4,7 +4,6 @@ import hashlib
 import PySimpleGUI as sg
 import os
 current_machine_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
-print(current_machine_id)
 
 APPS_NAMES = ['SmartLogger Player', 'SmartLogger Gravador']
 
@@ -21,7 +20,6 @@ class license_layout:
     def create_window(self):
         """ Create GUI instance """
         sg.change_look_and_feel(self.theme)
-        global lista
         main_layout = [
             [sg.Text("Selecione o produto:")],
             [sg.Combo(APPS_NAMES, readonly=True, key='APP')],
