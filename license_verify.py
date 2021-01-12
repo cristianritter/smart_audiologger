@@ -72,11 +72,11 @@ class Lic:
 
         if final_cod in self.find_offline():
             print('Licença local validada.')
-            return 'local'
+            return 'Arquivo Local'
 
         elif final_cod in self.find_online():
             print('Licença Online validada.')
-            return 'online'
+            return 'Online'
      
         else:
             print("Não foi encontrada uma licença válida. Por favor contate o desenvolvedor.")

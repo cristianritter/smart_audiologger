@@ -28,7 +28,7 @@ try:
 
     import vlc
 
-    sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
+    #sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
     ASSETS_PATH = os.path.join(ROOT_DIR, 'Assets/') 
@@ -57,7 +57,8 @@ try:
 
     class config_select:
         # Setup GUI window for output of media
-        def __init__(self, size, scale=1.0, theme='Tan'):
+        def __init__(self, license_result, size, scale=1.0, theme='Tan'):
+            self.license_result = license_result
             self.theme = theme  # This can be changed, but I'd stick with a dark theme
             self.default_bg_color = sg.LOOK_AND_FEEL_TABLE[self.theme]['BACKGROUND']
             self.window_size = size  # The size of the GUI window
@@ -76,6 +77,7 @@ try:
                 [sg.Text('Selecione um arquivo de configuração:', font='Helvetica 12 bold', text_color='Black')],
                 [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15')],
                 [sg.Image(os.path.join(ASSETS_PATH, 'wave.png'))],
+                [sg.Text("Tipo de licença encontrada: " + self.license_result)]
             ] 
             window = sg.Window('SmartPlayer', main_layout, element_justification='center', icon=ICON, finalize=True)
             
@@ -318,8 +320,9 @@ try:
             for item in self.failtimes_list:
                 graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
 
-    def select_config_window():
-        lg = config_select(size=(500, 500), scale=0.5)
+
+    def select_config_window(license_result):
+        lg = config_select(license_result, size=(500, 500), scale=0.5)
         lg.window.force_focus()
         while 1:
             event, values = lg.window.read(timeout=100)
@@ -341,7 +344,7 @@ try:
         """ The main program function """
 
         # Create the media player
-        select_config_window()
+        select_config_window(license_result)
         mp = MediaPlayer(size=(1920, 1080), scale=0.5)
         time.sleep(0.1)
         
@@ -349,16 +352,16 @@ try:
         while True:
             event, values = mp.window.read(timeout=20)
             mp.get_track_info()  
+            if event == None or event == 'Exit':
+                EXIT()
             if len(values['LISTA']) > 0:
                 if values['LISTA'][0] == "Last Minutes ...":
                     mp.redraw_fail_positions()
-            if event in (None, 'Exit'):
-                break
             if event == "Open config":
                 l.clear()
                 mp.window['LISTA'].update(l)
                 mp.window.Hide()
-                select_config_window()
+                select_config_window(license_result)
                 mp.window.UnHide()
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
@@ -444,5 +447,4 @@ try:
         main()
 
 except Exception as Err:
-    print(Err)
-    time.sleep(50)
+    sg.popup(Err)
