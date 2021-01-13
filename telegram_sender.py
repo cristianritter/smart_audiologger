@@ -5,7 +5,7 @@ import time
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
 configuration = parse_config.ConfPacket()
-configs = configuration.load_config('FILES')
+configs = configuration.load_config('FILES, TELEGRAM')
 
 NAME = configs['FILES']['name']
 
@@ -41,7 +41,7 @@ def get_chat_ids():
     try:
         f = open(ids_file, 'r')
         ids_list = f.readlines()
-        print(ids_list)
+    #    print(ids_list)
         clean_ids = []
         for item in ids_list:
             if item.find('\n') > 0:
@@ -64,6 +64,7 @@ def send_message(texto, to='all'):
                                    
 
 def receive_msg(update, context):
+    print("Mensagem Recebida via Telegram.")
     if NAME.upper() in update.message.text.upper() and 'CADASTRAR' in str(update.message.text).upper():
         adiciona_chat_id(update.effective_chat.id)
         send_message("Você foi cadastrado para receber alertas de {}.".format(NAME.upper()), update.effective_chat.id)
@@ -76,7 +77,8 @@ def receive_msg(update, context):
 echo_handler = MessageHandler(Filters.text & (~Filters.command), receive_msg)
 updater.dispatcher.add_handler(echo_handler)
 
-updater.start_polling()
+if str(configs['TELEGRAM']['server_enabled']).upper() == 'TRUE': 
+    updater.start_polling()
 
                                  
 
