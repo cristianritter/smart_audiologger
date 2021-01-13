@@ -4,15 +4,17 @@ import parse_config
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
 configuration = parse_config.ConfPacket()
-configs = configuration.load_config('FILES, TELEGRAM')
+configs = configuration.load_config('TELEGRAM_CLIENTS_FOLDERS, TELEGRAM_SERVER')
 
-NAME = configs['FILES']['name']
+TOKEN = configs['TELEGRAM_SERVER']['token']
 
-updater = Updater(token='1424747599:AAFyyZqM7PZ61BJjoL77MK2mh2i2m8DjOng', use_context=True)
+NAMES = configs['TELEGRAM_CLIENTS_FOLDERS']
+
+updater = Updater(token=TOKEN, use_context=True)
 
 
-ids_file = os.path.join(ROOT_DIR,'chat_id.txt')
-def adiciona_chat_id(chat_id):
+def adiciona_chat_id(chat_id, DIR):
+    ids_file = os.path.join(DIR,'chat_id.txt')
     try:
         f = open(ids_file, 'a')
         f.write(str(chat_id)+"\n")
@@ -20,7 +22,8 @@ def adiciona_chat_id(chat_id):
     except Exception as err:
         print("ERRO: ", err)
 
-def remove_chat_id(chat_id):
+def remove_chat_id(chat_id, DIR):
+    ids_file = os.path.join(DIR,'chat_id.txt')
     try:
         f = open(ids_file, 'r')
         ids_list = f.readlines()
@@ -37,10 +40,10 @@ def remove_chat_id(chat_id):
         print("ERRO: ", err)
 
 def get_chat_ids():
+    ids_file = os.path.join(ROOT_DIR,'chat_id.txt')
     try:
         f = open(ids_file, 'r')
         ids_list = f.readlines()
-    #    print(ids_list)
         clean_ids = []
         for item in ids_list:
             if item.find('\n') > 0:
@@ -64,19 +67,31 @@ def send_message(texto, to='all'):
 
 def receive_msg(update, context):
     print("Mensagem Recebida via Telegram.")
-    if NAME.upper() in update.message.text.upper() and 'CADASTRAR' in str(update.message.text).upper():
-        adiciona_chat_id(update.effective_chat.id)
-        send_message("Você foi cadastrado para receber alertas de {}.".format(NAME.upper()), update.effective_chat.id)
-    elif NAME.upper() in update.message.text.upper() and 'SAIR' in str(update.message.text).upper():
-        remove_chat_id(update.effective_chat.id)
-        send_message("Você foi não vai mais receber alertas de {}.".format(NAME.upper()), update.effective_chat.id)
+    for name in NAMES:
+        if name.lower() in str(update.message.text).lower():   
+            if 'CADASTRAR' in str(update.message.text).upper():
+                adiciona_chat_id(update.effective_chat.id, configs['TELEGRAM_CLIENTS_FOLDERS'][name])
+                send_message("Você foi cadastrado para receber alertas de {}.".format(name.upper()), update.effective_chat.id)
+                return
+            elif 'SAIR' in str(update.message.text).upper():
+                remove_chat_id(update.effective_chat.id, configs['TELEGRAM_CLIENTS_FOLDERS'][name])
+                send_message("Você não receberá mais alertas de {}.".format(name.upper()), update.effective_chat.id)
+                return
+            else:
+                send_message("Não consegui entender, tente novamente.", update.effective_chat.id)
+                return
+    send_message("Nome não encontrado.", update.effective_chat.id)
+            
+         
+    
+        
   
 #  to get chat id https://api.telegram.org/bot1424747599:AAFyyZqM7PZ61BJjoL77MK2mh2i2m8DjOng/getUpdates
 
 echo_handler = MessageHandler(Filters.text & (~Filters.command), receive_msg)
 updater.dispatcher.add_handler(echo_handler)
 
-if str(configs['TELEGRAM']['server_enabled']).upper() == 'TRUE': 
+if str(configs['TELEGRAM_SERVER']['enabled']).upper() == 'TRUE': 
     updater.start_polling()
 
                                  
