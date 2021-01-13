@@ -1,8 +1,7 @@
-import subprocess
-import hashlib
+from subprocess import check_output
+from hashlib import sha224
 import os
 from datetime import datetime, timedelta
-import sys
 import urllib.request
 import PySimpleGUI as sg
 
@@ -22,7 +21,7 @@ class Lic:
     def __init__(self):
         self.ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
         self.license_file = os.path.join(self.ROOT_DIR, 'license.lic' )
-        self.current_machine_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
+        self.current_machine_id = check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
         self.APPS_NAMES = ['SmartLogger Player', 'SmartLogger Gravador']
 
     def find_online(self):
@@ -52,18 +51,18 @@ class Lic:
 
     def gera_dev_unique_cod(self):
         root_cod_b = self.ROOT_DIR.encode('UTF-8')
-        root_cod_digest = hashlib.sha224(root_cod_b).hexdigest()
+        root_cod_digest = sha224(root_cod_b).hexdigest()
         bios_cod_b = self.current_machine_id.encode('UTF-8')
-        bios_cod_digest = hashlib.sha224(bios_cod_b).hexdigest()
+        bios_cod_digest = sha224(bios_cod_b).hexdigest()
         dev_uniq_b = "{}{}".format(bios_cod_digest, root_cod_digest).encode('UTF-8')
-        dev_uniq_digest = hashlib.sha224(dev_uniq_b).hexdigest()
+        dev_uniq_digest = sha224(dev_uniq_b).hexdigest()
         return dev_uniq_digest
 
     def gera_final_app_cod(self, app_idx):
         app_name_b = self.APPS_NAMES[app_idx].encode('UTF-8')
-        app_name_digest = hashlib.sha224(app_name_b).hexdigest()
+        app_name_digest = sha224(app_name_b).hexdigest()
         final_b = "{}{}".format(self.gera_dev_unique_cod(), app_name_digest).encode('UTF-8')
-        final_digest = hashlib.sha224(final_b).hexdigest()
+        final_digest = sha224(final_b).hexdigest()
         return final_digest
 
     def verifica(self, app_idx):

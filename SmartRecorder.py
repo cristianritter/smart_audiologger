@@ -3,13 +3,12 @@ try:
     from datetime import date, datetime, timedelta
     from threading import Thread
     import parse_config
-    import time
-    import subprocess
+    from time import sleep
+    from subprocess import check_output
     import os
-    import shutil
     import sox
-    import struct
-    import wave
+    from struct import unpack
+    from wave import open
     import license_verify
     from sys import exit as EXIT
     import save_log
@@ -45,14 +44,14 @@ try:
 
     def append_files(source, dest):
         data = []
-        hf = wave.open(dest, 'rb')
+        hf = open(dest, 'rb')
         data.append( [hf.getparams(), hf.readframes(hf.getnframes())] )
         hf.close()
-        hf = wave.open(source, 'rb')
+        hf = open(source, 'rb')
         data.append( [hf.getparams(), hf.readframes(hf.getnframes())] )
         hf.close()
     
-        hf = wave.open(dest, 'wb')
+        hf = open(dest, 'wb')
         hf.setparams(data[0][0])
         hf.writeframes(data[0][1])
         hf.writeframes(data[1][1])
@@ -74,7 +73,7 @@ try:
 
     def calculate_fingerprints(filename):
         try:
-            fpcalc_out = subprocess.check_output('fpcalc -algorithm 5 -channels 2 -raw %s'
+            fpcalc_out = check_output('fpcalc -algorithm 5 -channels 2 -raw %s'
                                             % (filename)).decode()
             lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
             lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
@@ -116,9 +115,9 @@ try:
                 if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 != 0:
                     while (int(datetime.now().strftime('%M%S'))!= 0):
                         pass
-                    subprocess.check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
+                    check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
                                                     % (AUDIO_DEVICE, temp_hour_file_p, 3599))
-                time.sleep(INPUT_BLOCK_TIME)
+                sleep(INPUT_BLOCK_TIME)
     
     class HorasImpares(Thread):
         def run(self):
@@ -126,13 +125,13 @@ try:
                 if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 == 0:
                     while (int(datetime.now().strftime('%M%S'))!= 0):
                         pass
-                    subprocess.check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
+                    check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
                                                     % (AUDIO_DEVICE, temp_hour_file_i, 3599))
-                time.sleep(INPUT_BLOCK_TIME)
+                sleep(INPUT_BLOCK_TIME)
 
     class copia_arquivos(Thread):
         def conversao_final(self, filename_s, filename_d):
-            subprocess.check_output('sox %s -C %s %s' 
+            check_output('sox %s -C %s %s' 
                                                     % (filename_s, AUDIO_COMPRESSION, filename_d))
         def run(self):
             while 1:
@@ -143,7 +142,7 @@ try:
                         os.mkdir(definitive_day_dir)
                     if os.path.exists(temp_hour_file_p):            
                         self.conversao_final(temp_hour_file_p, definitive_hour_file)
-                        time.sleep(200)
+                        sleep(200)
                         os.remove(temp_hour_file_p)                   
                 elif int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 == 0: #é par
                     definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
@@ -152,9 +151,9 @@ try:
                         os.mkdir(definitive_day_dir)
                     if os.path.exists(temp_hour_file_i):            
                         self.conversao_final(temp_hour_file_i, definitive_hour_file)
-                        time.sleep(200)
+                        sleep(200)
                         os.remove(temp_hour_file_i)                   
-                time.sleep(30)
+                sleep(30)
 
 
     def verificar_silencio(infos):
@@ -182,13 +181,13 @@ try:
     def verificar_clipped(debug=False):
         max = 0
         contagem = 0
-        hf = wave.open(temp_file, 'r')
+        hf = open(temp_file, 'r')
         bloco_len = hf.getnframes()
         if bloco_len > 200000:
             bloco_len = 200000
         for _ in range(bloco_len):
             wavedata = hf.readframes(1)
-            data = struct.unpack("2h", wavedata)
+            data = unpack("2h", wavedata)
             valor = abs(int(data[0]))
             if valor > max:
                 max = valor
@@ -259,7 +258,7 @@ try:
     result = License.verifica(1)
     if result == 0:
         print('Falha ao validar a licença', 'Adquira uma permissão para utilizar o aplicativo')
-        time.sleep(50)
+        sleep(50)
         EXIT()
 
     HorasImpares().start()
@@ -270,7 +269,7 @@ try:
         while 1:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
-            subprocess.check_output('sox -q -t waveaudio %d -d %s trim 0 %d'
+            check_output('sox -q -t waveaudio %d -d %s trim 0 %d'
                                             % (AUDIO_DEVICE, temp_file, INPUT_BLOCK_TIME))
             infos = file_stats(temp_file)
             print("\n")
@@ -279,4 +278,4 @@ try:
     Main()
 except Exception as Err:
     print (Err)
-    time.sleep(50)
+    sleep(50)
