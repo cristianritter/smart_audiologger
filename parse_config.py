@@ -31,7 +31,7 @@ class ConfPacket:
             
             except Exception as error:
                 print ('Erro no arquivo config.ini: ', error)
-        return configs
+        return configs        
 
 def main():
     configs = ConfPacket()

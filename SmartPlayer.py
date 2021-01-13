@@ -194,7 +194,6 @@ try:
             if track is None:
                 return  # User did not provide any information
         
-            # This is a file path and not an online url
             media = self.instance.media_new(track)
             media.set_meta(0, track.replace('\\', '/').split('/').pop())  # filename
             media.set_meta(1, 'Local Media')  # Default author value for local media
@@ -341,14 +340,10 @@ try:
         EXIT()
 
     def main():
-        """ The main program function """
-
-        # Create the media player
         select_config_window(license_result)
         mp = MediaPlayer(size=(1920, 1080), scale=0.5)
         time.sleep(0.1)
         
-        # Main event loop
         while True:
             event, values = mp.window.read(timeout=20)
             mp.get_track_info()  

@@ -1,7 +1,6 @@
 print ("Importando bibliotecas... ")
 from datetime import date, datetime, timedelta
 from threading import Thread
-from pyzabbix import ZabbixMetric, ZabbixSender
 import parse_config
 import time
 import subprocess
@@ -12,12 +11,15 @@ import struct
 import wave
 import license_verify
 from sys import exit as EXIT
+import save_log
+import zabbix_metric
+import telegram_sender
 
 print ("Inicializando... ")
 try:
     print ("Carregando configurações... ")
     configuration = parse_config.ConfPacket()
-    configs = configuration.load_config('FILES, AUDIO_PARAM, ZABBIX, DETECTION_PARAM')
+    configs = configuration.load_config('FILES, AUDIO_PARAM, DETECTION_PARAM')
     temp_folder = configs['FILES']['temp_folder']
     definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
     temp_file = os.path.join(temp_folder,'temp.wav')
@@ -28,7 +30,7 @@ try:
     temp_fail_file = os.path.join(temp_folder,'fail.wav')
     temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
     temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
-    log_folder = configs['FILES']['log_folder']
+    #log_folder = configs['FILES']['log_folder']
     silence_offset = float(configs['DETECTION_PARAM']['silence_offset']) 
     stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
     similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
@@ -40,18 +42,7 @@ try:
     attempts = default_attempts_value
     status = 5
 
-    print ("Definindo classes... ")
-    def adiciona_linha_log(texto, time_offset=0):
-        dataFormatada = (datetime.now()+timedelta(seconds=time_offset)).strftime('%d/%m/%Y %H:%M:%S')
-        mes_ano = (datetime.now()+timedelta(seconds=time_offset)).strftime('_%Y%m')
-        try:
-            logfilename = configs['FILES']['log_folder']+'log'+mes_ano+'.txt'
-            f = open(logfilename, 'a')
-            f.write(dataFormatada + " " + texto +"\n")
-            f.close()
-        except Exception as err:
-            print(dataFormatada, "ERRO ao adicionar linha log: ", err)
-            adiciona_linha_log(err)
+    print ("Definindo classes e funções... ")
 
     def append_files(source, dest):
         data = []
@@ -217,7 +208,9 @@ try:
             attemps = default_attempts_value
             if status != 0:
                 print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
-                adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']),INPUT_BLOCK_TIME*-1)
+                save_log.adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']),INPUT_BLOCK_TIME*-1)
+                telegram_sender.send_message('Silence')
+                zabbix_metric.send_status_metric("Silence Detected")
                 status = 0
             else:
                 print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
@@ -227,7 +220,8 @@ try:
             attemps = default_attempts_value
             if status != 1:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
-                adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.",INPUT_BLOCK_TIME*-1)
+                save_log.adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.",INPUT_BLOCK_TIME*-1)
+                zabbix_metric.send_status_metric("Clipped Audio Detected")
                 status = 1
             else:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
@@ -236,7 +230,8 @@ try:
             if attemps <= 0:
                 if status != 2:
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
-                    adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=INPUT_BLOCK_TIME*-1*default_attempts_value)
+                    save_log.adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=INPUT_BLOCK_TIME*-1*default_attempts_value)
+                    zabbix_metric.send_status_metric("Tunning failure Detected")
                     status= 2
                 else:
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
@@ -248,11 +243,13 @@ try:
             attemps = default_attempts_value
             if status != 3:
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
-                adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']),INPUT_BLOCK_TIME*-1)
+                save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']),INPUT_BLOCK_TIME*-1)
+                telegram_sender.send_message('On Air')
                 status= 3
             else:       
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
-
+                zabbix_metric.send_status_metric("On Air")
+                
 
     License = license_verify.Lic()
     result = License.verifica(1)
