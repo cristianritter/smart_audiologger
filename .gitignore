@@ -1,5 +1,5 @@
-
-*.txt
+devices.txt
+config.txt
 *.pyc
 *.mp3
 *.spec

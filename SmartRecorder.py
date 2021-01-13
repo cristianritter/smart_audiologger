@@ -1,22 +1,21 @@
-print ("Importando bibliotecas... ")
-from datetime import date, datetime, timedelta
-from threading import Thread
-import parse_config
-import time
-import subprocess
-import os
-import shutil
-import sox
-import struct
-import wave
-import license_verify
-from sys import exit as EXIT
-import save_log
-import zabbix_metric
-import telegram_sender
-
-print ("Inicializando... ")
 try:
+    print ("Importando bibliotecas... ")
+    from datetime import date, datetime, timedelta
+    from threading import Thread
+    import parse_config
+    import time
+    import subprocess
+    import os
+    import shutil
+    import sox
+    import struct
+    import wave
+    import license_verify
+    from sys import exit as EXIT
+    import save_log
+    import zabbix_metric
+    import telegram_sender
+
     print ("Carregando configurações... ")
     configuration = parse_config.ConfPacket()
     configs = configuration.load_config('FILES, AUDIO_PARAM, DETECTION_PARAM')
@@ -30,13 +29,13 @@ try:
     temp_fail_file = os.path.join(temp_folder,'fail.wav')
     temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
     temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
-    #log_folder = configs['FILES']['log_folder']
     silence_offset = float(configs['DETECTION_PARAM']['silence_offset']) 
     stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
     similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
     INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
     AUDIO_COMPRESSION = configs['AUDIO_PARAM']['compression']
     AUDIO_DEVICE = int(configs['AUDIO_PARAM']['device_index'])
+    NAME = configs['FILES']['name']
 
     default_attempts_value = 3
     attempts = default_attempts_value
@@ -74,12 +73,15 @@ try:
         return soma
 
     def calculate_fingerprints(filename):
-        fpcalc_out = subprocess.check_output('fpcalc -algorithm 5 -channels 2 -raw %s'
-                                        % (filename)).decode()
-        lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
-        lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
-        return lista_fp
-
+        try:
+            fpcalc_out = subprocess.check_output('fpcalc -algorithm 5 -channels 2 -raw %s'
+                                            % (filename)).decode()
+            lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
+            lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
+            return lista_fp
+        except Exception as ERR:
+            print("Erro com o arquivo FPCALC"+str(ERR))
+            
     def file_stats(filename):
         tfm = sox.Transformer()
         tfm.oops()
@@ -201,16 +203,16 @@ try:
     def verifica_resultados(infos):
         global attemps
         global status
+        print('- '+NAME+' -')
         fingerprint_results = verificar_fingerprint()
         oops_results = verificar_oops_RMS(infos)
-        print('- '+configs['FILES']['name']+' -')
         if verificar_silencio(infos):
             attemps = default_attempts_value
             if status != 0:
                 print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
                 save_log.adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']),INPUT_BLOCK_TIME*-1)
-                telegram_sender.send_message('Silence')
-                zabbix_metric.send_status_metric("Silence Detected")
+                telegram_sender.send_message(NAME+'Silence detected.')
+                zabbix_metric.send_status_metric(NAME+"Silence Detected")
                 status = 0
             else:
                 print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
@@ -221,7 +223,8 @@ try:
             if status != 1:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
                 save_log.adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.",INPUT_BLOCK_TIME*-1)
-                zabbix_metric.send_status_metric("Clipped Audio Detected")
+                telegram_sender.send_message(NAME+'Clipped Audio detected.')
+                zabbix_metric.send_status_metric(NAME+"Clipped Audio Detected")
                 status = 1
             else:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
@@ -231,7 +234,8 @@ try:
                 if status != 2:
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                     save_log.adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=INPUT_BLOCK_TIME*-1*default_attempts_value)
-                    zabbix_metric.send_status_metric("Tunning failure Detected")
+                    telegram_sender.send_message(NAME+'Tunning failure Detected')
+                    zabbix_metric.send_status_metric(NAME+"Tunning failure Detected")
                     status= 2
                 else:
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
@@ -244,7 +248,7 @@ try:
             if status != 3:
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
                 save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']),INPUT_BLOCK_TIME*-1)
-                telegram_sender.send_message('On Air')
+                telegram_sender.send_message(NAME+'On Air.')
                 status= 3
             else:       
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
