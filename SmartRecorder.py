@@ -210,8 +210,8 @@ try:
             if status != 0:
                 print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
                 save_log.adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']),INPUT_BLOCK_TIME*-1)
-                telegram_sender.send_message(NAME+'Silence detected.')
-                zabbix_metric.send_status_metric(NAME+"Silence Detected")
+                telegram_sender.send_message(NAME+' - Silence detected.')
+                zabbix_metric.send_status_metric(NAME+" - Silence Detected")
                 status = 0
             else:
                 print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
@@ -222,8 +222,8 @@ try:
             if status != 1:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
                 save_log.adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.",INPUT_BLOCK_TIME*-1)
-                telegram_sender.send_message(NAME+'Clipped Audio detected.')
-                zabbix_metric.send_status_metric(NAME+"Clipped Audio Detected")
+                telegram_sender.send_message(NAME+' - Clipped Audio detected.')
+                zabbix_metric.send_status_metric(NAME+" - Clipped Audio Detected")
                 status = 1
             else:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
@@ -233,8 +233,8 @@ try:
                 if status != 2:
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                     save_log.adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=INPUT_BLOCK_TIME*-1*default_attempts_value)
-                    telegram_sender.send_message(NAME+'Tunning failure Detected')
-                    zabbix_metric.send_status_metric(NAME+"Tunning failure Detected")
+                    telegram_sender.send_message(NAME+' - Tunning failure Detected')
+                    zabbix_metric.send_status_metric(NAME+" - Tunning failure Detected")
                     status= 2
                 else:
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
@@ -247,11 +247,11 @@ try:
             if status != 3:
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
                 save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']),INPUT_BLOCK_TIME*-1)
-                telegram_sender.send_message(NAME+'On Air.')
+                telegram_sender.send_message(NAME+' - On Air.')
                 status= 3
             else:       
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
-                zabbix_metric.send_status_metric("On Air")
+                zabbix_metric.send_status_metric(NAME+" - On Air")
                 
 
     License = license_verify.Lic()
