@@ -1,7 +1,6 @@
 from telegram.ext import Updater, MessageHandler, Filters
 import os
 import parse_config
-import time
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
 configuration = parse_config.ConfPacket()
