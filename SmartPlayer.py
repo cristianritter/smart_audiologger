@@ -7,7 +7,7 @@
 import PySimpleGUI as sg
 from sys import platform as PLATFORM
 from sys import exit as EXIT
-import sys
+#import sys
 from datetime import datetime, timedelta
 import os
 import webbrowser
@@ -16,18 +16,18 @@ import parse_config
 import license_verify
 import os
 
+print("Carregando DLLS...")
 try:
-
     os.add_dll_directory(os.getcwd())
-
     try:
+        pass
         os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
     except Exception as Err:
-        sg.popup(str(Err))
+        sg.popup('VLC - '+str(Err))
         EXIT()
-
+    print("Importando VLC")
     import vlc
-
+    print("Importado")
     #sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
@@ -36,6 +36,7 @@ try:
     DEFAULT_IMG = ASSETS_PATH + 'background2.png'
     ICON = ASSETS_PATH + 'player.ico'
 
+    print("Carregando configurações...")
     def select_config_file(filename):
         configuration = parse_config.ConfPacket()
         global configs
@@ -273,7 +274,9 @@ try:
                 
             """ Called when the skip next button is pressed """
             tamanho = self.player.get_length() // 1000
-            position = destino / tamanho
+            position = 0
+            if tamanho != 0:
+                position = destino / tamanho
             self.player.set_position(position)
             self.get_track_info()
 
@@ -288,7 +291,9 @@ try:
                     break
 
             tamanho = self.player.get_length() // 1000
-            position = destino / tamanho
+            position = 0
+            if tamanho != 0:
+                position = destino / tamanho
             
             self.player.set_position(position)
             self.get_track_info()
@@ -317,7 +322,8 @@ try:
             graph.DrawRectangle((-0, 0), (800,20), fill_color='gray')
             graph.update()
             for item in self.failtimes_list:
-                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
+                if segundos_total != 0:
+                    graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
 
 
     def select_config_window(license_result):
@@ -372,6 +378,8 @@ try:
                     continue
                 if values['LISTA'][0] == "Last Minutes ...":
                     segundos_total = mp.player.get_length() / 1000
+                    if segundos_total == 0:
+                        continue
                     if values['TIME'] > 1-(10/segundos_total):
                         continue
                 mp.player.set_position(values['TIME'])
