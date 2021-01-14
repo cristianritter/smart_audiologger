@@ -262,9 +262,12 @@ try:
             self.get_track_info()
 
         def jump_next_fail(self):
-            if len(self.failtimes_list) == 0:
+            if len(self.failtimes_list) == 0 and len(self.returntimes_list) == 0:
                 return
             destino = 0
+            self.failtimes_list += self.returntimes_list
+            self.failtimes_list = sorted(self.failtimes_list)
+
             for item in self.failtimes_list:
                 if (self.player.get_time() / 1000) < (item - (INPUT_BLOCK_TIME+5)):
                     destino = item - (INPUT_BLOCK_TIME+5)
@@ -280,9 +283,11 @@ try:
 
         def jump_previous_fail(self):
             """ Called when the skip previous button is pressed """
-            if len(self.failtimes_list) == 0:
+            if len(self.failtimes_list) == 0 or len(self.returntimes_list) == 0:
                 return
             destino = 0
+            self.failtimes_list += self.returntimes_list
+            self.failtimes_list = sorted(self.failtimes_list)
             for item in reversed(self.failtimes_list):
                 if ((self.player.get_time() / 1000)-1) > (item - (INPUT_BLOCK_TIME+5)):
                     destino = item - (INPUT_BLOCK_TIME+5)
@@ -317,12 +322,12 @@ try:
         def redraw_fail_positions(self):
             segundos_total = self.player.get_length() / 1000
             graph = self.window['graph']  
-            graph.DrawRectangle((-0, 0), (800,20), fill_color='gray')
+            graph.DrawRectangle((-0, 0), (800,20), fill_color='black')
             graph.update()
             for item in self.failtimes_list:
-                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='red', width = 2)
+                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='red', width = 4)
             for item in self.returntimes_list:
-                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='green', width = 2)
+                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 3)
 
 
     def select_config_window(license_result):
@@ -424,6 +429,10 @@ try:
                         filename = temp_hour_file_i
                     else:
                         filename = temp_hour_file_p           
+
+                if not os.path.exists(filename):
+                    sg.popup("Arquivo não disponível atualmente, tente novamente mais tarde.")
+                    continue
                 mp.load_single_track(filename)
                 while mp.player.get_length() == 0:
                     sleep(0.1)
