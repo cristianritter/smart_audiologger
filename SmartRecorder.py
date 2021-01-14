@@ -79,7 +79,7 @@ try:
             lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
             return lista_fp
         except Exception as ERR:
-            print("Erro com o arquivo FPCALC"+str(ERR))
+            print("Erro com o arquivo FPCALC "+str(ERR))
             
     def file_stats(filename):
         tfm = sox.Transformer()
@@ -246,7 +246,7 @@ try:
             attemps = default_attempts_value
             if status != 3:
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
-                save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']),INPUT_BLOCK_TIME*-1)
+                save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
                 telegram_sender.send_message(NAME+' - On Air.')
                 status= 3
             else:       

@@ -12,7 +12,14 @@ NAMES = configs['TELEGRAM_CLIENTS_FOLDERS']
 
 updater = Updater(token=TOKEN, use_context=True)
 
-
+for item in NAMES:
+    folder = configs['TELEGRAM_CLIENTS_FOLDERS'][item]
+    filepath = os.path.join(folder, 'chat_id.txt')
+    if not os.path.exists(filepath):
+        f = open(filepath, 'a')
+        f.write("\n")
+        f.close()
+       
 def adiciona_chat_id(chat_id, DIR):
     ids_file = os.path.join(DIR,'chat_id.txt')
     try:
@@ -39,8 +46,7 @@ def remove_chat_id(chat_id, DIR):
     except Exception as err:
         print("ERRO: ", err)
 
-def get_chat_ids():
-    ids_file = os.path.join(ROOT_DIR,'chat_id.txt')
+def get_chat_ids(ids_file):
     try:
         f = open(ids_file, 'r')
         ids_list = f.readlines()
@@ -48,6 +54,8 @@ def get_chat_ids():
         for item in ids_list:
             if item.find('\n') > 0:
                 clean_ids.append(item[:item.find('\n')])
+            elif item.find('\n') == 0:
+                continue
             else:
                 clean_ids.append(item)
         f.close()
@@ -56,9 +64,12 @@ def get_chat_ids():
     return clean_ids
 
 def send_message(texto, to='all'):
-    ids = get_chat_ids()
     global updater
     if to == 'all':
+        for name in NAMES:
+            if name.upper() in texto.upper():
+                file = os.path.join(configs['TELEGRAM_CLIENTS_FOLDERS'][name], 'chat_id.txt')
+        ids = get_chat_ids(file)
         for item in ids:
             updater.bot.send_message(chat_id=item, text=texto)
     else:
@@ -78,9 +89,9 @@ def receive_msg(update, context):
                 send_message("Você não receberá mais alertas de {}.".format(name.upper()), update.effective_chat.id)
                 return
             else:
-                send_message("Não consegui entender, tente novamente.", update.effective_chat.id)
+                send_message("Parece que algo não está funcionando como deveria...", update.effective_chat.id)
                 return
-    send_message("Nome não encontrado.", update.effective_chat.id)
+    send_message("Tente utilizar [CADASTRAR] ou [SAIR] + [NOME DA CONFIGURAÇÃO].", update.effective_chat.id)
             
          
     

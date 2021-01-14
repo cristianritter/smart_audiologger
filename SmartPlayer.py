@@ -7,11 +7,10 @@
 import PySimpleGUI as sg
 from sys import platform as PLATFORM
 from sys import exit as EXIT
-#import sys
 from datetime import datetime, timedelta
 import os
 import webbrowser
-import time
+from time import sleep
 import parse_config
 import license_verify
 import os
@@ -25,10 +24,8 @@ try:
     except Exception as Err:
         sg.popup('VLC - '+str(Err))
         EXIT()
-    print("Importando VLC")
+    print("Importando VLC...")
     import vlc
-    print("Importado")
-    #sys.stdout = open(sys.stdout.fileno(), mode='w', encoding='utf8', buffering=1)
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
     ASSETS_PATH = os.path.join(ROOT_DIR, 'Assets/') 
@@ -88,9 +85,10 @@ try:
 
     class MediaPlayer:
         failtimes_list = []
+        returntimes_list = []
         def __init__(self, size, scale=1.0, theme='DarkBlue'):
             """ Media player constructor """
-            self.failtimes_list.append(0)
+            #self.failtimes_list.append(0)
             self.paused = False
             # Setup media player
             self.instance = vlc.Instance()
@@ -322,8 +320,9 @@ try:
             graph.DrawRectangle((-0, 0), (800,20), fill_color='gray')
             graph.update()
             for item in self.failtimes_list:
-                if segundos_total != 0:
-                    graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 2)
+                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='red', width = 2)
+            for item in self.returntimes_list:
+                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='green', width = 2)
 
 
     def select_config_window(license_result):
@@ -348,7 +347,6 @@ try:
     def main():
         select_config_window(license_result)
         mp = MediaPlayer(size=(1920, 1080), scale=0.5)
-        time.sleep(0.1)
         
         while True:
             event, values = mp.window.read(timeout=20)
@@ -378,20 +376,17 @@ try:
                     continue
                 if values['LISTA'][0] == "Last Minutes ...":
                     segundos_total = mp.player.get_length() / 1000
-                    if segundos_total == 0:
-                        continue
                     if values['TIME'] > 1-(10/segundos_total):
                         continue
                 mp.player.set_position(values['TIME'])
                 mp.get_track_info()
-                time.sleep(0.01)
-
+                
             if event == 'START':
                 mp.jump_to_begin()
 
             if event == 'LOG':
                 if (len(values['CALENDAR'])) == 0:
-                    continue
+                    values['CALENDAR']=datetime.now().strftime('%Y%m%d')
                 lognm = "log_"+values['CALENDAR'][0:6]+".txt"
                 logfile = os.path.join(log_folder, lognm)
                 if os.path.exists(logfile):
@@ -414,7 +409,8 @@ try:
                 
             if event == 'LISTA':
                 mp.stop()
-                mp.failtimes_list.clear()  
+                mp.failtimes_list.clear()
+                mp.returntimes_list.clear()  
                 if (len(values['LISTA'])) == 0:
                     continue
                 folder = values['CALENDAR']+'\\'
@@ -429,7 +425,8 @@ try:
                     else:
                         filename = temp_hour_file_p           
                 mp.load_single_track(filename)
-                time.sleep(0.2)
+                while mp.player.get_length() == 0:
+                    sleep(0.1)
                 mp.list_player.next()
                 lognm = "log_"+values['CALENDAR'][0:6]+".txt"
                 logfile = os.path.join(log_folder, lognm)
@@ -442,9 +439,11 @@ try:
                 for x in f: #le linhas
                     if logtext in x:
                         pos = int(x[14:16])*60+int(x[17:19]) #posicao segundos
-                        mp.failtimes_list.append(pos) #seconds
+                        if 'On Air' in x:
+                            mp.returntimes_list.append(pos)
+                        else:
+                            mp.failtimes_list.append(pos) #seconds
                 mp.redraw_fail_positions()
-                time.sleep(0.5)
                     
     if __name__ == '__main__':
         main()

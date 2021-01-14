@@ -1,8 +1,10 @@
 devices.txt
 config.txt
+log.txt
 *.pyc
 *.mp3
 *.spec
 **/__pycache__
-**/
+**/build
+**/dist
 __pycache__/audiorecorder.cpython-38.pyc
