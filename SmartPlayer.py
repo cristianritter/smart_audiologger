@@ -14,6 +14,7 @@ from time import sleep
 import parse_config
 import license_verify
 import os
+from subprocess import check_output
 
 print("Carregando DLLS...")
 try:
@@ -118,20 +119,20 @@ try:
             sg.change_look_and_feel(self.theme)
             
             # Column layout for media player button controls
-            col1 = [[
-                    sg.In(key='CALENDAR', enable_events=True, visible=False), sg.CalendarButton('', image_filename=BUTTON_DICT['CALENDAR'], pad=(0,0),  
+            buttons_group = [[sg.In(key='CALENDAR', enable_events=True, visible=False), sg.CalendarButton('', image_filename=BUTTON_DICT['CALENDAR'], pad=(0,0),  
                             button_color=('white', self.default_bg_color), border_width=0, key='CALENDAR', format=('%Y%m%d')),
                     self.button('START', BUTTON_DICT['START']),
                     self.button('REWIND', BUTTON_DICT['REWIND']),
                     self.button('PLAY', BUTTON_DICT['PLAY_OFF']),
-                    self.button('FORWARD', BUTTON_DICT['FORWARD'])
-                            ]]
-                    
-            # Column layout for media info and instructions
-            col2 = [[sg.Text('Loading...',
-                            size=(45, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
+                    self.button('FORWARD', BUTTON_DICT['FORWARD']),
+                    ]]
 
-            col3 = [    
+            
+            # Column layout for media info and instructions
+            info_column = [[sg.Text('Loading...',
+                            size=(60, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
+
+            direita_column = [    
                 [sg.Listbox(l, size=(40, 25), enable_events=True, key='LISTA')],
                 [sg.Text('Abrir arquivo de LOG', key = 'LOG', 
                         enable_events=True, font=(sg.DEFAULT_FONT, 8, 'underline'))]
@@ -142,7 +143,16 @@ try:
                         ['Help', 'About...'], ]      
 
             # Main GUI layout
-            main_layout = [
+
+            coluna_export = [[sg.Text('- Exportação -', justification='center', size=(25,1))],
+                            [sg.Button("Mark In", size=[10,1], button_color=['white','black'], border_width='5', key='MARK_IN'),
+                            sg.Button("Mark Out", size=[10,1], button_color=['black','white'], border_width='5', key='MARK_OUT')], 
+                            [sg.In('In time', size=[11,1], justification='center', key='IN_TEXT'),
+                            sg.In('Out time', size=[11,1], justification='center', key='OUT_TEXT')],
+                            [sg.FolderBrowse("Export", key='EXPORT', size=[22,1], button_color=['green','white'], pad=[5,5], enable_events=True)],
+                            ]
+
+            coluna_esquerda = [
                 [sg.Menu(menu_def, tearoff=False)],
                 # Media output element -- this is the video output element
                 [sg.Image(filename=DEFAULT_IMG, pad=(0, 5), size=self.player_size, key='VID_OUT')],
@@ -161,16 +171,16 @@ try:
                 [sg.Graph(canvas_size=(900, 20), graph_bottom_left=(-60, 0), graph_top_right=(840, 20), background_color=self.default_bg_color, enable_events=True, key='graph')],
                 
                 # Button and media information layout (created above)
-                [sg.Column(col1), sg.Column(col2)]
+                [sg.Column(buttons_group), sg.Column(info_column), sg.Column(coluna_export,background_color='black', element_justification='center') ]
             ]
 
-            main_2col = [
-                [sg.Column(main_layout), sg.Column(col3)]
+            principal = [
+                [sg.Column(coluna_esquerda), sg.Column(direita_column)]
             ]
 
 
             # Create a PySimpleGUI window from the specified parameters
-            window = sg.Window('SmartLogger', main_2col, element_justification='center', icon=ICON, finalize=True)
+            window = sg.Window('SmartLogger', principal, element_justification='center', icon=ICON, finalize=True)
 
             # Expand the time element so that the row elements are positioned correctly
             window['TIME'].expand(expand_x=True)
@@ -210,6 +220,23 @@ try:
             if self.track_cnt == 1:
                 self.track_num = 1
                 self.list_player.play()
+
+        def get_time_elapsed(self):
+            return "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
+
+        def get_current_audio_filepath(self, values):
+            folder = values['CALENDAR']+'\\'
+            sourcepath = os.path.join(definitive_folder, folder)
+            if values['LISTA'][0] != "Last Minutes ...":
+                dados = values['LISTA'][0]
+                filename = os.path.join(sourcepath, dados)
+            else:
+                dados = datetime.now().strftime('%Y%m%d_%H.mp3')
+                if int(datetime.now().strftime('%H'))%2 != 0: #é impar
+                    filename = temp_hour_file_i
+                else:
+                    filename = temp_hour_file_p
+            return filename           
 
         def get_meta(self, meta_type):
             """ Retrieve saved meta data from tracks in media list """
@@ -411,13 +438,33 @@ try:
                 if values['CALENDAR'] == datetime.now().strftime('%Y%m%d'):
                     l.append("Last Minutes ...")
                 mp.window['LISTA'].update(l)
+
+            if event == 'MARK_IN':
+                mp.window['IN_TEXT'].update(mp.get_time_elapsed())
                 
+            if event == 'MARK_OUT':
+                mp.window['OUT_TEXT'].update(mp.get_time_elapsed())
+
+            if event == 'EXPORT':
+                print (values)
+                current_filepath = mp.get_current_audio_filepath(values)
+                filename = str(current_filepath[:-4]).split('\\')
+                begin_seconds = int(values['IN_TEXT'][0:2])*60 + int(values['IN_TEXT'][3:5]) 
+                end_seconds = int(values['OUT_TEXT'][0:2])*60 + int(values['OUT_TEXT'][3:5]) 
+                dest = os.path.join(values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
+                #print(begin_seconds)
+                check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
+                pass
+
             if event == 'LISTA':
                 mp.stop()
                 mp.failtimes_list.clear()
                 mp.returntimes_list.clear()  
                 if (len(values['LISTA'])) == 0:
                     continue
+                filename = mp.get_current_audio_filepath(values)
+                dados = values['LISTA'][0]
+                '''
                 folder = values['CALENDAR']+'\\'
                 sourcepath = os.path.join(definitive_folder, folder)
                 if values['LISTA'][0] != "Last Minutes ...":
@@ -429,7 +476,7 @@ try:
                         filename = temp_hour_file_i
                     else:
                         filename = temp_hour_file_p           
-
+                '''
                 if not os.path.exists(filename):
                     sg.popup("Arquivo não disponível atualmente, tente novamente mais tarde.")
                     continue
