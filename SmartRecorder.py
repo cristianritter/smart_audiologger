@@ -34,6 +34,7 @@ try:
     INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
     AUDIO_COMPRESSION = configs['AUDIO_PARAM']['compression']
     AUDIO_DEVICE = int(configs['AUDIO_PARAM']['device_index'])
+    CHANNELS = int(configs['AUDIO_PARAM']['channels'])
     NAME = configs['FILES']['name']
 
     default_attempts_value = 3
@@ -55,19 +56,32 @@ try:
                     os.mkdir(definitive_day_dir)
 
                 if os.path.exists(definitive_hour_file) and current_record_length > 0:
+                    print('Recuperando arquivos corrompidos...')
                     partial_record_length = int(sox.file_info.stat(definitive_hour_file)['Length (seconds)']) 
+                    print("partial", partial_record_length)
                     definitive_partial_file = definitive_hour_file[:-4]+'_partial.mp3'
                     if os.path.exists(definitive_partial_file):
                         os.remove(definitive_partial_file)
                     os.rename(definitive_hour_file, definitive_partial_file)
 
                 silence_time = 3559 - (current_record_length + partial_record_length)
-                check_output('sox -q -n -C {} -c 2 silence.mp3 trim 0 {}'.format(AUDIO_COMPRESSION, silence_time))
-            
+                if silence_time < 1:
+                    silence_time = 1
+                comando = 'sox -q -n -C {} -c {} silence.mp3 trim 0 {}'.format(AUDIO_COMPRESSION, CHANNELS, silence_time)
+                print(comando)
+                result = check_output(comando)
+                print(result)
+             
                 if current_record_length > 0:
-                    check_output('sox {} silence.mp3 -q -t waveaudio {} -C {} {} trim 0 {} '.format(definitive_partial_file, AUDIO_DEVICE, AUDIO_COMPRESSION, definitive_hour_file, current_record_length))
-                os.remove(definitive_partial_file)
-                os.remove('silence.mp3')
+                    comando = 'sox {} silence.mp3 -q -t waveaudio {} -C {} -c {} {} trim 0 {} '.format(definitive_partial_file, AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, current_record_length)
+                    print(comando)
+                    result = check_output(comando)
+                    print(result)
+             
+                if os.path.exists(definitive_partial_file):
+                    os.remove(definitive_partial_file)
+                if os.path.exists('silence.mp3'):
+                    os.remove('silence.mp3')
         
         def current_seconds(self):
                 currentminutesseconds = datetime.now().strftime('%M%S')
@@ -90,8 +104,7 @@ try:
 
     def calculate_fingerprints(filename):
         try:
-            fpcalc_out = check_output('fpcalc -algorithm 5 -channels 2 -raw %s'
-                                            % (filename)).decode()
+            fpcalc_out = check_output('fpcalc -algorithm 5 -channels {} -raw {}'.format(CHANNELS, filename)).decode()
             lista_fp = fpcalc_out[fpcalc_out.find('=', 12)+1:].split(',')
             lista_fp[len(lista_fp)-1]=lista_fp[len(lista_fp)-1][:9]
             return lista_fp
@@ -237,8 +250,7 @@ try:
         while 1:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
-            check_output('sox -q -t waveaudio %d -d %s trim 0 %d'
-                                            % (AUDIO_DEVICE, temp_file, INPUT_BLOCK_TIME))
+            check_output('sox -q -t waveaudio {} -c {} -d {} trim 0 {}'.format(AUDIO_DEVICE, CHANNELS, temp_file, INPUT_BLOCK_TIME) )
             infos = file_stats(temp_file)
             print("\n")
             verifica_resultados(infos)

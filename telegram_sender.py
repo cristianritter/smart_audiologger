@@ -8,11 +8,11 @@ configs = configuration.load_config('TELEGRAM_CLIENTS_FOLDERS, TELEGRAM_SERVER')
 
 TOKEN = configs['TELEGRAM_SERVER']['token']
 
-NAMES = configs['TELEGRAM_CLIENTS_FOLDERS']
+TELEGRAM_CLIENTS_FOLDERS = configs['TELEGRAM_CLIENTS_FOLDERS']
 
 updater = Updater(token=TOKEN, use_context=True)
 
-for item in NAMES:
+for item in TELEGRAM_CLIENTS_FOLDERS:
     folder = configs['TELEGRAM_CLIENTS_FOLDERS'][item]
     filepath = os.path.join(folder, 'chat_id.txt')
     if not os.path.exists(filepath):
@@ -66,9 +66,11 @@ def get_chat_ids(ids_file):
 def send_message(texto, to='all'):
     global updater
     if to == 'all':
-        for name in NAMES:
+        for name in TELEGRAM_CLIENTS_FOLDERS:
             if name.upper() in texto.upper():
                 file = os.path.join(configs['TELEGRAM_CLIENTS_FOLDERS'][name], 'chat_id.txt')
+        if not os.path.exists(file):
+            print("Arquivo de chats do telegram não encontrado, verifique configuração TELEGRAM_CLIENTS_FOLDERS")
         ids = get_chat_ids(file)
         for item in ids:
             updater.bot.send_message(chat_id=item, text=texto)
@@ -78,7 +80,7 @@ def send_message(texto, to='all'):
 
 def receive_msg(update, context):
     print("Mensagem Recebida via Telegram.")
-    for name in NAMES:
+    for name in TELEGRAM_CLIENTS_FOLDERS:
         if name.lower() in str(update.message.text).lower():   
             if 'CADASTRAR' in str(update.message.text).upper():
                 adiciona_chat_id(update.effective_chat.id, configs['TELEGRAM_CLIENTS_FOLDERS'][name])

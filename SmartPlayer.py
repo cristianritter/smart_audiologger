@@ -227,15 +227,8 @@ try:
         def get_current_audio_filepath(self, values):
             folder = values['CALENDAR']+'\\'
             sourcepath = os.path.join(definitive_folder, folder)
-            if values['LISTA'][0] != "Last Minutes ...":
-                dados = values['LISTA'][0]
-                filename = os.path.join(sourcepath, dados)
-            else:
-                dados = datetime.now().strftime('%Y%m%d_%H.mp3')
-                if int(datetime.now().strftime('%H'))%2 != 0: #é impar
-                    filename = temp_hour_file_i
-                else:
-                    filename = temp_hour_file_p
+            dados = values['LISTA'][0]
+            filename = os.path.join(sourcepath, dados)
             return filename           
 
         def get_meta(self, meta_type):
@@ -382,18 +375,21 @@ try:
         
         while True:
             event, values = mp.window.read(timeout=20)
-            mp.get_track_info()  
+            mp.get_track_info() 
             if event == None or event == 'Exit':
                 EXIT()
             if len(values['LISTA']) > 0:
-                if values['LISTA'][0] == "Last Minutes ...":
-                    mp.redraw_fail_positions()
+                if 'segundos_total' in locals():
+                    if segundos_total != mp.player.get_length() / 1000:
+                        mp.redraw_fail_positions()
             if event == "Open config":
                 l.clear()
                 mp.window['LISTA'].update(l)
                 mp.window.Hide()
                 select_config_window(license_result)
                 mp.window.UnHide()
+                mp.stop()
+                event = 'CALENDAR'
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
             if event == 'PLAY':
@@ -406,12 +402,13 @@ try:
             if event == 'TIME':
                 if not len(values['LISTA']) > 0:
                     continue
-                if values['LISTA'][0] == "Last Minutes ...":
-                    segundos_total = mp.player.get_length() / 1000
-                    if values['TIME'] > 1-(10/segundos_total):
-                        continue
+                #if segundos_total != mp.player.get_length() / 1000:
+                segundos_total = mp.player.get_length() / 1000
+                if values['TIME'] > 1-(10/segundos_total):
+                    continue
                 mp.player.set_position(values['TIME'])
                 mp.get_track_info()
+                sleep(0.05)
                 
             if event == 'START':
                 mp.jump_to_begin()
@@ -425,6 +422,8 @@ try:
                     webbrowser.open(logfile)
 
             if event == 'CALENDAR':
+                if (len(values['CALENDAR']) == 0):
+                    continue
                 mp.stop()
                 mp.add_media()
                 folder = values['CALENDAR']+'\\'
@@ -434,9 +433,10 @@ try:
                     mp.window['LISTA'].update(l)
                     continue
                 for e in os.listdir(sourcepath):
-                    l.append(e)
-                if values['CALENDAR'] == datetime.now().strftime('%Y%m%d'):
-                    l.append("Last Minutes ...")
+                    if 'partial' in e:
+                        continue
+                    else:
+                        l.append(e)
                 mp.window['LISTA'].update(l)
 
             if event == 'MARK_IN':
@@ -454,6 +454,7 @@ try:
                 end_seconds = int(values['OUT_TEXT'][0:2])*60 + int(values['OUT_TEXT'][3:5]) 
                 dest = os.path.join(values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
                 check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
+                sg.popup("Prontinho.")
                 pass
 
             if event == 'LISTA':
@@ -464,26 +465,14 @@ try:
                     continue
                 filename = mp.get_current_audio_filepath(values)
                 dados = values['LISTA'][0]
-                '''
-                folder = values['CALENDAR']+'\\'
-                sourcepath = os.path.join(definitive_folder, folder)
-                if values['LISTA'][0] != "Last Minutes ...":
-                    dados = values['LISTA'][0]
-                    filename = os.path.join(sourcepath, dados)
-                else:
-                    dados = datetime.now().strftime('%Y%m%d_%H.mp3')
-                    if int(datetime.now().strftime('%H'))%2 != 0: #é impar
-                        filename = temp_hour_file_i
-                    else:
-                        filename = temp_hour_file_p           
-                '''
                 if not os.path.exists(filename):
-                    sg.popup("Arquivo não disponível atualmente, tente novamente mais tarde.")
+                    sg.popup("Arquivo não disponível. Por favor atualize a lista.")
                     continue
                 mp.load_single_track(filename)
                 while mp.player.get_length() == 0:
                     sleep(0.1)
                 mp.list_player.next()
+                segundos_total = mp.player.get_length() / 1000
                 lognm = "log_"+values['CALENDAR'][0:6]+".txt"
                 logfile = os.path.join(log_folder, lognm)
                 if not os.path.exists(logfile):
