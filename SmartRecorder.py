@@ -42,21 +42,6 @@ try:
 
     print ("Definindo classes e funções... ")
 
-    def append_files(source, dest):
-        data = []
-        hf = open(dest, 'rb')
-        data.append( [hf.getparams(), hf.readframes(hf.getnframes())] )
-        hf.close()
-        hf = open(source, 'rb')
-        data.append( [hf.getparams(), hf.readframes(hf.getnframes())] )
-        hf.close()
-    
-        hf = open(dest, 'wb')
-        hf.setparams(data[0][0])
-        hf.writeframes(data[0][1])
-        hf.writeframes(data[1][1])
-        hf.close()
-
     def compair_fingerprint(): 
         finger1 = calculate_fingerprints(os.path.join(parse_config.ROOT_DIR, configs['FILES']['sample_file']))
         finger2 = calculate_fingerprints(temp_file)

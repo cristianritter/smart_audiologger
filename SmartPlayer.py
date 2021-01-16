@@ -147,8 +147,8 @@ try:
             coluna_export = [[sg.Text('- Exportação -', justification='center', size=(25,1))],
                             [sg.Button("Mark In", size=[10,1], button_color=['white','black'], border_width='5', key='MARK_IN'),
                             sg.Button("Mark Out", size=[10,1], button_color=['black','white'], border_width='5', key='MARK_OUT')], 
-                            [sg.In('In time', size=[11,1], justification='center', key='IN_TEXT'),
-                            sg.In('Out time', size=[11,1], justification='center', key='OUT_TEXT')],
+                            [sg.In('00:00', size=[11,1], justification='center', key='IN_TEXT', readonly='True', text_color='black'),
+                            sg.In('00:10', size=[11,1], justification='center', key='OUT_TEXT', readonly='True', text_color='black')],
                             [sg.FolderBrowse("Export", key='EXPORT', size=[22,1], button_color=['green','white'], pad=[5,5], enable_events=True)],
                             ]
 
@@ -446,13 +446,13 @@ try:
                 mp.window['OUT_TEXT'].update(mp.get_time_elapsed())
 
             if event == 'EXPORT':
-                print (values)
+                if (len(values['LISTA'])) == 0:
+                    continue
                 current_filepath = mp.get_current_audio_filepath(values)
                 filename = str(current_filepath[:-4]).split('\\')
                 begin_seconds = int(values['IN_TEXT'][0:2])*60 + int(values['IN_TEXT'][3:5]) 
                 end_seconds = int(values['OUT_TEXT'][0:2])*60 + int(values['OUT_TEXT'][3:5]) 
                 dest = os.path.join(values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
-                #print(begin_seconds)
                 check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
                 pass
 
