@@ -5,7 +5,7 @@ try:
     import parse_config
     from time import sleep
     from subprocess import check_output
-    import os
+    import os.path
     import sox
     from struct import unpack
     from wave import open
@@ -40,7 +40,39 @@ try:
     attempts = default_attempts_value
     status = 5
 
-    print ("Definindo classes e funções... ")
+    print ("Definindo classes e funções... ")  
+
+    class Gravador(Thread):
+        def run(self):
+            while 1:
+                current_record_length = 3559 - self.current_seconds()
+                partial_record_length = 0
+                definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
+                definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))  
+                definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
+                definitive_partial_file = ''
+                if not os.path.exists(definitive_day_dir):
+                    os.mkdir(definitive_day_dir)
+
+                if os.path.exists(definitive_hour_file) and current_record_length > 0:
+                    partial_record_length = int(sox.file_info.stat(definitive_hour_file)['Length (seconds)']) 
+                    definitive_partial_file = definitive_hour_file[:-4]+'_partial.mp3'
+                    if os.path.exists(definitive_partial_file):
+                        os.remove(definitive_partial_file)
+                    os.rename(definitive_hour_file, definitive_partial_file)
+
+                silence_time = 3559 - (current_record_length + partial_record_length)
+                check_output('sox -q -n -C {} -c 2 silence.mp3 trim 0 {}'.format(AUDIO_COMPRESSION, silence_time))
+            
+                if current_record_length > 0:
+                    check_output('sox {} silence.mp3 -q -t waveaudio {} -C {} {} trim 0 {} '.format(definitive_partial_file, AUDIO_DEVICE, AUDIO_COMPRESSION, definitive_hour_file, current_record_length))
+                os.remove(definitive_partial_file)
+                os.remove('silence.mp3')
+        
+        def current_seconds(self):
+                currentminutesseconds = datetime.now().strftime('%M%S')
+                currentseconds = int(currentminutesseconds[0:2])*60+int(currentminutesseconds[3:5])
+                return currentseconds
 
     def compair_fingerprint(): 
         finger1 = calculate_fingerprints(os.path.join(parse_config.ROOT_DIR, configs['FILES']['sample_file']))
@@ -65,7 +97,7 @@ try:
             return lista_fp
         except Exception as ERR:
             print("Erro com o arquivo FPCALC "+str(ERR))
-            
+
     def file_stats(filename):
         tfm = sox.Transformer()
         tfm.oops()
@@ -92,54 +124,6 @@ try:
         retorno['CH1RMS']=monoch1_stat['RMS     amplitude']
         retorno['CH2RMS']=monoch2_stat['RMS     amplitude']
         return retorno
-
-
-    class HorasPares(Thread):
-        def run(self):
-            while 1:
-                if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 != 0:
-                    while (int(datetime.now().strftime('%M%S'))!= 0):
-                        pass
-                    check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
-                                                    % (AUDIO_DEVICE, temp_hour_file_p, 3599))
-                sleep(INPUT_BLOCK_TIME)
-    
-    class HorasImpares(Thread):
-        def run(self):
-            while 1:
-                if int(datetime.now().strftime('%M%S')) > (5959 - INPUT_BLOCK_TIME) and int(datetime.now().strftime('%H'))%2 == 0:
-                    while (int(datetime.now().strftime('%M%S'))!= 0):
-                        pass
-                    check_output('sox -q -t waveaudio %d -d %s trim 0 %d' 
-                                                    % (AUDIO_DEVICE, temp_hour_file_i, 3599))
-                sleep(INPUT_BLOCK_TIME)
-
-    class copia_arquivos(Thread):
-        def conversao_final(self, filename_s, filename_d):
-            check_output('sox %s -C %s %s' 
-                                                    % (filename_s, AUDIO_COMPRESSION, filename_d))
-        def run(self):
-            while 1:
-                if int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 != 0: #é impar
-                    definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
-                    definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
-                    if not os.path.exists(definitive_day_dir):
-                        os.mkdir(definitive_day_dir)
-                    if os.path.exists(temp_hour_file_p):            
-                        self.conversao_final(temp_hour_file_p, definitive_hour_file)
-                        sleep(200)
-                        os.remove(temp_hour_file_p)                   
-                elif int(datetime.now().strftime('%M%S')) <= (30) and int(datetime.now().strftime('%H'))%2 == 0: #é par
-                    definitive_day_dir = os.path.join(definitive_folder, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d'))    
-                    definitive_hour_file = os.path.join(definitive_day_dir, (datetime.now()-timedelta(hours=1)).strftime('%Y%m%d_%H.mp3'))
-                    if not os.path.exists(definitive_day_dir):
-                        os.mkdir(definitive_day_dir)
-                    if os.path.exists(temp_hour_file_i):            
-                        self.conversao_final(temp_hour_file_i, definitive_hour_file)
-                        sleep(200)
-                        os.remove(temp_hour_file_i)                   
-                sleep(30)
-
 
     def verificar_silencio(infos):
         if float(infos['CH1RMS']) < silence_offset or float(infos['CH2RMS']) < silence_offset:
@@ -238,17 +222,16 @@ try:
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
                 zabbix_metric.send_status_metric(NAME+" - On Air")
                 
+    def carregar_licenca():
+        License = license_verify.Lic()
+        result = License.verifica(1)
+        if result == 0:
+            print('Falha ao validar a licença', 'Adquira uma permissão para utilizar o aplicativo')
+            sleep(50)
+            EXIT()
 
-    License = license_verify.Lic()
-    result = License.verifica(1)
-    if result == 0:
-        print('Falha ao validar a licença', 'Adquira uma permissão para utilizar o aplicativo')
-        sleep(50)
-        EXIT()
-
-    HorasImpares().start()
-    HorasPares().start()
-    copia_arquivos().start()
+    carregar_licenca()
+    Gravador().start()
 
     def Main():
         while 1:
