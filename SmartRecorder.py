@@ -4,7 +4,7 @@ try:
     from threading import Thread
     import parse_config
     from time import sleep
-    from subprocess import check_output
+    from subprocess import check_output, Popen
     import os.path
     import sox
     from struct import unpack
@@ -44,49 +44,73 @@ try:
     print ("Definindo classes e funções... ")  
 
     class Gravador(Thread):
+        definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
+        partial_record_length = 0
+        comm_append_partial = ''
+        comm_append_synth = ''
+        comm_append_final = ''
+
         def run(self):
             while 1:
-                current_record_length = 3559 - self.current_seconds()
-                partial_record_length = 0
-                definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
-                definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))  
-                definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
                 definitive_partial_file = ''
+             
+                definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))  
                 if not os.path.exists(definitive_day_dir):
                     os.mkdir(definitive_day_dir)
+                definitive_hour_file = os.path.join(definitive_day_dir, datetime.now().strftime('%Y%m%d_%H.mp3'))
 
-                if os.path.exists(definitive_hour_file) and current_record_length > 0:
-                    print('Recuperando arquivos corrompidos...')
-                    partial_record_length = int(sox.file_info.stat(definitive_hour_file)['Length (seconds)']) 
-                    print("partial", partial_record_length)
+                current_record_length = 3559 - self.current_seconds()                
+                if current_record_length < 60:
+                    continue
+                
+                if os.path.exists(definitive_hour_file):
                     definitive_partial_file = definitive_hour_file[:-4]+'_partial.mp3'
                     if os.path.exists(definitive_partial_file):
+                        definitive_hour_file_old = definitive_hour_file[:-3]+'_old.mp3'
+                        os.rename(definitive_hour_file, definitive_hour_file_old)
+                        check_output('sox {} {} {}'.format(
+                                definitive_partial_file, definitive_hour_file_old, definitive_hour_file
+                                            ))
                         os.remove(definitive_partial_file)
-                    os.rename(definitive_hour_file, definitive_partial_file)
 
-                silence_time = 3559 - (current_record_length + partial_record_length)
-                if silence_time < 1:
-                    silence_time = 1
-                comando = 'sox -q -n -C {} -c {} silence.mp3 trim 0 {}'.format(AUDIO_COMPRESSION, CHANNELS, silence_time)
-                print(comando)
-                result = check_output(comando)
+                    os.rename(definitive_hour_file, definitive_partial_file)
+                    self.partial_record_length = int(sox.file_info.stat(definitive_partial_file)['Length (seconds)']) 
+                    self.comm_append_partial = '"|sox {} -C {} -c {} -p"'.format(
+                                definitive_partial_file, AUDIO_COMPRESSION, CHANNELS)
+
+                current_record_length = 3559 - self.current_seconds()                    
+                silence_time = 3559 - (current_record_length + self.partial_record_length)
+               
+                self.comm_append_final = '"|sox {} -C {} -c {} -p"'.format(
+                                definitive_hour_file, AUDIO_COMPRESSION, CHANNELS)
+                  
+                self.comm_append_synth = '"|sox -n -C {} -c {} -v 0.3 -p synth {} sine 900"'.format(
+                            AUDIO_COMPRESSION, CHANNELS, silence_time)
+
+                comm_gravacao = 'sox  -q -t waveaudio {} -C {} -c {} {} trim 0 {}'.format(
+                            AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, current_record_length)
+                result = check_output(comm_gravacao)
                 print(result)
+                self.gera_arquivo_final(definitive_hour_file, definitive_partial_file)
              
-                if current_record_length > 0:
-                    comando = 'sox {} silence.mp3 -q -t waveaudio {} -C {} -c {} {} trim 0 {} '.format(definitive_partial_file, AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, current_record_length)
-                    print(comando)
-                    result = check_output(comando)
-                    print(result)
              
-                if os.path.exists(definitive_partial_file):
-                    os.remove(definitive_partial_file)
-                if os.path.exists('silence.mp3'):
-                    os.remove('silence.mp3')
-        
         def current_seconds(self):
                 currentminutesseconds = datetime.now().strftime('%M%S')
                 currentseconds = int(currentminutesseconds[0:2])*60+int(currentminutesseconds[3:5])
                 return currentseconds
+
+        def gera_arquivo_final(self, definitive_hour_file, definitive_partial_file):
+            comando = 'sox --combine concatenate {} {} {}  {}'.format(
+                            self.comm_append_partial, self.comm_append_synth, self.comm_append_final, definitive_hour_file[:-3]+'_full.mp3')    
+            Popen(comando)
+            try:
+                if os.path.exists(definitive_partial_file):
+                    os.remove(definitive_partial_file)
+                if os.path.exists('silence.mp3'):
+                        os.remove('silence.mp3')
+            except Exception as ERR:
+                print(ERR)
+        
 
     def compair_fingerprint(): 
         finger1 = calculate_fingerprints(os.path.join(parse_config.ROOT_DIR, configs['FILES']['sample_file']))
