@@ -52,6 +52,11 @@ try:
 
         def run(self):
             while 1:
+                self.partial_record_length = 0
+                self.comm_append_partial = ''
+                self.comm_append_synth = ''
+                self.comm_append_final = ''
+
                 definitive_partial_file = ''
              
                 definitive_day_dir = os.path.join(definitive_folder, datetime.now().strftime('%Y%m%d'))  
@@ -102,12 +107,11 @@ try:
         def gera_arquivo_final(self, definitive_hour_file, definitive_partial_file):
             comando = 'sox --combine concatenate {} {} {}  {}'.format(
                             self.comm_append_partial, self.comm_append_synth, self.comm_append_final, definitive_hour_file[:-3]+'_full.mp3')    
+            print(comando)
             Popen(comando)
             try:
                 if os.path.exists(definitive_partial_file):
                     os.remove(definitive_partial_file)
-                if os.path.exists('silence.mp3'):
-                        os.remove('silence.mp3')
             except Exception as ERR:
                 print(ERR)
         
