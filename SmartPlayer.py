@@ -149,7 +149,7 @@ try:
                             sg.Button("Mark Out", size=[10,1], button_color=['black','white'], border_width='5', key='MARK_OUT')], 
                             [sg.In('00:00', size=[11,1], justification='center', key='IN_TEXT', readonly='True', text_color='black'),
                             sg.In('00:10', size=[11,1], justification='center', key='OUT_TEXT', readonly='True', text_color='black')],
-                            [sg.FolderBrowse("Export", key='EXPORT', size=[22,1], button_color=['green','white'], pad=[5,5], enable_events=True)],
+                            [sg.FolderBrowse("Export", key='EXPORT', size=[22,1], button_color=['green','white'], pad=[5,5], enable_events=True, disabled=True)],
                             ]
 
             coluna_esquerda = [
@@ -385,15 +385,16 @@ try:
             if event == "Open config":
                 l.clear()
                 mp.window['LISTA'].update(l)
+                mp.stop()
+                event = 'CALENDAR'
                 mp.window.Hide()
                 select_config_window(license_result)
                 mp.window.UnHide()
-                mp.stop()
-                event = 'CALENDAR'
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
             if event == 'PLAY':
                 mp.play()
+                mp.window['EXPORT'].Update(disabled=False)
             if event == 'FORWARD':
                 mp.jump_next_fail()
             if event == 'REWIND':
@@ -412,7 +413,7 @@ try:
                 
             if event == 'START':
                 mp.jump_to_begin()
-
+            
             if event == 'LOG':
                 if (len(values['CALENDAR'])) == 0:
                     values['CALENDAR']=datetime.now().strftime('%Y%m%d')
@@ -440,21 +441,28 @@ try:
                 mp.window['LISTA'].update(l)
 
             if event == 'MARK_IN':
+                if (len(values['LISTA'])) == 0:
+                    continue
                 mp.window['IN_TEXT'].update(mp.get_time_elapsed())
                 
             if event == 'MARK_OUT':
+                if (len(values['LISTA'])) == 0:
+                    continue
                 mp.window['OUT_TEXT'].update(mp.get_time_elapsed())
 
             if event == 'EXPORT':
-                if (len(values['LISTA'])) == 0:
+                if (len(values['LISTA'])) == 0 or (len (values['EXPORT'])) == 0:
                     continue
                 current_filepath = mp.get_current_audio_filepath(values)
                 filename = str(current_filepath[:-4]).split('\\')
                 begin_seconds = int(values['IN_TEXT'][0:2])*60 + int(values['IN_TEXT'][3:5]) 
-                end_seconds = int(values['OUT_TEXT'][0:2])*60 + int(values['OUT_TEXT'][3:5]) 
+                end_seconds = int(values['OUT_TEXT'][0:2])*60 + int(values['OUT_TEXT'][3:5])
+                if begin_seconds >= end_seconds:
+                    sg.popup("ATENÇÃO", "Erro na marcação de entrada e saída. Tente novamente." ) 
+                    continue
                 dest = os.path.join(values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
                 check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
-                sg.popup("Prontinho.")
+                sg.popup("Prontinho. O arquivo já está disponível na pasta: ", values['EXPORT'])
                 pass
 
             if event == 'LISTA':
@@ -473,6 +481,8 @@ try:
                     sleep(0.1)
                 mp.list_player.next()
                 segundos_total = mp.player.get_length() / 1000
+                if segundos_total > 0:
+                    mp.window['EXPORT'].Update(disabled=False)
                 lognm = "log_"+values['CALENDAR'][0:6]+".txt"
                 logfile = os.path.join(log_folder, lognm)
                 if not os.path.exists(logfile):
