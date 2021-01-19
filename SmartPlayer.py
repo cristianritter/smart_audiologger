@@ -56,7 +56,7 @@ try:
 
     class config_select:
         # Setup GUI window for output of media
-        def __init__(self, license_result, size, scale=1.0, theme='Tan'):
+        def __init__(self, license_result, size, scale=1.0, theme='DarkBlue'):
             self.license_result = license_result
             self.theme = theme  # This can be changed, but I'd stick with a dark theme
             self.default_bg_color = sg.LOOK_AND_FEEL_TABLE[self.theme]['BACKGROUND']
@@ -72,11 +72,11 @@ try:
                 if item[-4:] == '.ini':
                     configs_list.append(item)
             main_layout = [
-                [sg.Text('SmartPlayer', font='Courier 45 ', text_color='White', background_color='Black')],
-                [sg.Text('Selecione um arquivo de configuração:', font='Helvetica 12 bold', text_color='Black')],
+                [sg.Text('SmartPlayer', font='Fixedsys 45 ', text_color='White')],
+                [sg.Text('Selecione um arquivo de configuração:', font='Fixedsys 12 bold', text_color='gray')],
                 [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15')],
                 [sg.Image(os.path.join(ASSETS_PATH, 'wave.png'))],
-                [sg.Text("Tipo de licença encontrada: " + self.license_result)]
+                [sg.Text("Tipo de licença encontrada: " + self.license_result, font='Fixedsys 12 bold', text_color='gray')]
             ] 
             window = sg.Window('SmartPlayer', main_layout, element_justification='center', icon=ICON, finalize=True)
             
@@ -136,8 +136,11 @@ try:
                 [sg.Text('Horários disponíveis: ', 
                         font=(sg.DEFAULT_FONT, 8, 'bold'))], 
                 [sg.Listbox(l, size=(40, 24), enable_events=True, key='LISTA')],
-                [sg.Text('Abrir arquivo de LOG', key = 'LOG', 
-                        enable_events=True, font=(sg.DEFAULT_FONT, 8, 'underline'))]
+                [sg.Text('LOG de ocorrências disponível AQUI', key = 'LOG', 
+                        enable_events=True, font=(sg.DEFAULT_FONT, 9, 'underline'))],
+                [sg.Text('Copyright ® 2021', key = 'COPYRIGHT', 
+                        enable_events=True, font=(sg.DEFAULT_FONT, 8))],
+                
             ]
             
             # ------ Menu Definition ------ #      
@@ -182,7 +185,7 @@ try:
 
 
             # Create a PySimpleGUI window from the specified parameters
-            window = sg.Window('SmartLogger', principal, element_justification='center', icon=ICON, finalize=True)
+            window = sg.Window('SmartLogger', principal, element_justification='center', icon=ICON, finalize=True, return_keyboard_events=True)
 
             # Expand the time element so that the row elements are positioned correctly
             window['TIME'].expand(expand_x=True)
@@ -243,7 +246,7 @@ try:
             time_elapsed = "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
             time_total = "{:02d}:{:02d}".format(*divmod(self.player.get_length() // 1000, 60))
             if self.media_list.count() == 0:
-                self.window['INFO'].update('Pick a date from CALENDAR to START')
+                self.window['INFO'].update('Primeiramente selecione uma data no icone CALENDARIO.')
             else:
                 message = "{}\n{}".format(self.get_meta(1).upper(), self.get_meta(0))
                 self.window['INFO'].update(message)
@@ -331,6 +334,8 @@ try:
                 return
             else:
                 self.window['INFO'].update('Loading media...')
+                self.window['IN_TEXT'].update('00:00')
+                self.window['OUT_TEXT'].update('00:10')
                 self.window.read(1)
                 self.add_media(track)
                 self.play()
@@ -391,6 +396,16 @@ try:
                 mp.window.Hide()
                 select_config_window(license_result)
                 mp.window.UnHide()
+            if event == 'MouseWheel:Down':
+                if not len(values['LISTA']) > 0:
+                    continue
+                limite = 0.002/(mp.player.get_length()/3600000)
+                mp.player.set_position(values['TIME']-limite)
+                mp.get_track_info()
+                sleep(0.2)
+                print(event)
+            if event == 'MouseWheel:Up':
+                print(event)
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
             if event == 'PLAY':
@@ -404,8 +419,7 @@ try:
             if event == 'TIME':
                 if not len(values['LISTA']) > 0:
                     continue
-                limite = 0.0015/(mp.player.get_length()/3600000)
-               # print(limite)
+                limite = 0.002/(mp.player.get_length()/3600000)
                 mp.player.set_position(values['TIME']-limite)
                 mp.get_track_info()
                 sleep(0.2)
@@ -424,6 +438,7 @@ try:
             if event == 'CALENDAR':
                 if (len(values['CALENDAR']) == 0):
                     continue
+                mp.window['EXPORT'].Update(disabled=True)     
                 mp.stop()
                 mp.add_media()
                 folder = values['CALENDAR']+'\\'
@@ -456,12 +471,13 @@ try:
                 filename = str(current_filepath[:-4]).split('\\')
                 begin_seconds = int(values['IN_TEXT'][0:2])*60 + int(values['IN_TEXT'][3:5]) 
                 end_seconds = int(values['OUT_TEXT'][0:2])*60 + int(values['OUT_TEXT'][3:5])
-                if begin_seconds >= end_seconds:
+                segundos_total = mp.player.get_length() / 1000
+                if begin_seconds >= end_seconds or end_seconds > segundos_total:
                     sg.popup("ATENÇÃO", "Erro na marcação de entrada e saída. Tente novamente." ) 
                     continue
                 dest = os.path.join(values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
                 check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
-                sg.popup("Prontinho. O arquivo já está disponível na pasta: ", values['EXPORT'])
+                sg.popup("Que legal! O arquivo já está disponível na pasta: ", values['EXPORT'])
                 pass
 
             if event == 'LISTA':
