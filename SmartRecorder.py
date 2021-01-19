@@ -38,7 +38,7 @@ try:
     NAME = configs['FILES']['name']
 
     default_attempts_value = 3
-    attempts = default_attempts_value
+    attemps = default_attempts_value
     status = 5
 
     print ("Definindo classes e funções... ")  
