@@ -43,19 +43,6 @@ try:
 
     print ("Definindo classes e funções... ")  
 
-    class MultiProcesso(Thread):
-        def __init__(self, group=None, target=None, name=None,
-                 args=(), kwargs=None):
-	        super(MultiProcesso,self).__init__(group=group, target=target, 
-			              name=name)
-	        self.args = args
-	        self.kwargs = kwargs
-	        return
-        
-        #def run(self):
-        #    #print(self.args)
-        #    pass
-
     def finaliza(definitive_hour_file, definitive_partial_file, comm_append_partial, comm_append_synth):
         definitive_full_file = definitive_hour_file[:-4]+'_full.mp3'
 
@@ -110,6 +97,7 @@ try:
                             definitive_partial_file, definitive_hour_file_old, definitive_hour_file
                                             ))
                     os.remove(definitive_partial_file)
+                    os.remove(definitive_hour_file_old)
                 
                 print('Criando arquivo parcial...')
                 os.rename(definitive_hour_file, definitive_partial_file)
@@ -127,12 +115,12 @@ try:
                             AUDIO_COMPRESSION, CHANNELS, silence_time)
 
             comm_gravacao = 'sox -q -t waveaudio {} -C {} -c {} {} trim 0 {}'.format(
-                        AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, 3.3)
+                        AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, current_record_length)
 
             print('Iniciando a gravação. Current seconds=', current_seconds())
             check_output(comm_gravacao)
             print('Finalizando a gravação. Current seconds=', current_seconds())
-            T = MultiProcesso(target=finaliza(definitive_hour_file, definitive_partial_file, comm_append_partial, comm_append_synth))
+            T = Thread(target=finaliza, args=(definitive_hour_file, definitive_partial_file, comm_append_partial, comm_append_synth))
             T.start()
             print('Tudo pronto. Current seconds: ', current_seconds())
 
@@ -299,7 +287,7 @@ try:
 
     carregar_licenca()
     
-    t = MultiProcesso(target=gravar())
+    t = Thread(target=gravar)
     t.start()
 
     def Main():

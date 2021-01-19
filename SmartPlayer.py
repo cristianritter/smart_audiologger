@@ -132,8 +132,10 @@ try:
             info_column = [[sg.Text('Loading...',
                             size=(60, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
 
-            direita_column = [    
-                [sg.Listbox(l, size=(40, 25), enable_events=True, key='LISTA')],
+            direita_column = [   
+                [sg.Text('Horários disponíveis: ', 
+                        font=(sg.DEFAULT_FONT, 8, 'bold'))], 
+                [sg.Listbox(l, size=(40, 24), enable_events=True, key='LISTA')],
                 [sg.Text('Abrir arquivo de LOG', key = 'LOG', 
                         enable_events=True, font=(sg.DEFAULT_FONT, 8, 'underline'))]
             ]
@@ -165,10 +167,10 @@ try:
                         background_color='#83D8F5', orientation='h', key='TIME'),
 
                 # Elements for tracking media length and track counts
-                sg.Text('00:00', key='TIME_TOTAL'),
-                sg.Text('          ', key='TRACKS')],
+                sg.Text('00:00', key='TIME_TOTAL')],
+                #sg.Text('          ', key='TRACKS')],
 
-                [sg.Graph(canvas_size=(900, 20), graph_bottom_left=(-60, 0), graph_top_right=(840, 20), background_color=self.default_bg_color, enable_events=True, key='graph')],
+                [sg.Graph(canvas_size=(self.player_size[0], 20), graph_bottom_left=(-57, 0), graph_top_right=(840, 20), background_color=self.default_bg_color, enable_events=True, key='GRAPHY')],
                 
                 # Button and media information layout (created above)
                 [sg.Column(buttons_group), sg.Column(info_column), sg.Column(coluna_export,background_color='black', element_justification='center') ]
@@ -248,8 +250,7 @@ try:
                 self.window['TIME_ELAPSED'].update(time_elapsed)
                 self.window['TIME'].update(self.player.get_position())
                 self.window['TIME_TOTAL'].update(time_total)
-                self.window['TRACKS'].update('{} of {}'.format(self.track_num, self.track_cnt))
-
+     
         def play(self):
             """ Called when the play button is pressed """
             if self.media_list.count() == 0:
@@ -293,7 +294,6 @@ try:
                     destino = item - (INPUT_BLOCK_TIME+5)
                     break
                 
-            """ Called when the skip next button is pressed """
             tamanho = self.player.get_length() // 1000
             position = 0
             if tamanho != 0:
@@ -341,13 +341,14 @@ try:
         
         def redraw_fail_positions(self):
             segundos_total = self.player.get_length() / 1000
-            graph = self.window['graph']  
-            graph.DrawRectangle((-0, 0), (800,20), fill_color='black')
+            graph = self.window['GRAPHY']  
+            graph.DrawRectangle((-0, 0), (self.player_size[0]-180,20), fill_color='black')
             graph.update()
+            window_size = self.player_size[0]-180
             for item in self.failtimes_list:
-                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='red', width = 4)
+                graph.DrawLine (((window_size/segundos_total)*item, 0), ((window_size/segundos_total)*item, 20), color='red', width = 4)
             for item in self.returntimes_list:
-                graph.DrawLine (((785/segundos_total)*item, 0), ((785/segundos_total)*item, 20), color='white', width = 3)
+                graph.DrawLine (((window_size/segundos_total)*item, 0), ((window_size/segundos_total)*item, 20), color='white', width = 3)
 
 
     def select_config_window(license_result):
@@ -371,7 +372,7 @@ try:
 
     def main():
         select_config_window(license_result)
-        mp = MediaPlayer(size=(1920, 1080), scale=0.5)
+        mp = MediaPlayer(size=(1920, 720), scale=0.5)
         
         while True:
             event, values = mp.window.read(timeout=20)
@@ -403,13 +404,11 @@ try:
             if event == 'TIME':
                 if not len(values['LISTA']) > 0:
                     continue
-                #if segundos_total != mp.player.get_length() / 1000:
-                segundos_total = mp.player.get_length() / 1000
-                if values['TIME'] > 1-(10/segundos_total):
-                    continue
-                mp.player.set_position(values['TIME'])
+                limite = 0.0015/(mp.player.get_length()/3600000)
+               # print(limite)
+                mp.player.set_position(values['TIME']-limite)
                 mp.get_track_info()
-                sleep(0.05)
+                sleep(0.2)
                 
             if event == 'START':
                 mp.jump_to_begin()
