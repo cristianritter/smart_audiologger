@@ -4,7 +4,7 @@ try:
     from threading import Thread
     import parse_config
     from time import sleep
-    from subprocess import check_output, Popen
+    from subprocess import check_output
     import os.path
     import sox
     from struct import unpack
@@ -21,13 +21,6 @@ try:
     temp_folder = configs['FILES']['temp_folder']
     definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
     temp_file = os.path.join(temp_folder,'temp.wav')
-    temp_out_of_phase = os.path.join(temp_folder,'out_of_phase.wav')
-    temp_normalized = os.path.join(temp_folder,'normalized.wav')
-    temp_monoCH1 = os.path.join(temp_folder,'monoCH1.wav')
-    temp_monoCH2 = os.path.join(temp_folder,'monoCH2.wav')
-    temp_fail_file = os.path.join(temp_folder,'fail.wav')
-    temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
-    temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
     silence_offset = float(configs['DETECTION_PARAM']['silence_offset']) 
     stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
     similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
@@ -154,6 +147,10 @@ try:
             print("Erro com o arquivo FPCALC "+str(ERR))
 
     def file_stats(filename):
+        temp_out_of_phase = os.path.join(temp_folder,'out_of_phase.wav')
+        temp_monoCH1 = os.path.join(temp_folder,'monoCH1.wav')
+        temp_monoCH2 = os.path.join(temp_folder,'monoCH2.wav')
+    
         tfm = sox.Transformer()
         tfm.oops()
         remixch1_dictionary = {1: [1], 2: [1] }
@@ -233,7 +230,7 @@ try:
             attemps = default_attempts_value
             if status != 0:
                 print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
-                save_log.adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']),INPUT_BLOCK_TIME*-1)
+                save_log.adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']),(INPUT_BLOCK_TIME*-2))
                 telegram_sender.send_message(NAME+' - Silence detected.')
                 zabbix_metric.send_status_metric(NAME+" - Silence Detected")
                 status = 0
@@ -245,7 +242,7 @@ try:
             attemps = default_attempts_value
             if status != 1:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
-                save_log.adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.",INPUT_BLOCK_TIME*-1)
+                save_log.adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.",(INPUT_BLOCK_TIME*-1))
                 telegram_sender.send_message(NAME+' - Clipped Audio detected.')
                 zabbix_metric.send_status_metric(NAME+" - Clipped Audio Detected")
                 status = 1
@@ -253,10 +250,10 @@ try:
                 print("Clipped audio detected. Tunning problem or Input volume too high.")
         
         elif oops_results['value'] and fingerprint_results['value']:
-            if attemps <= 0:
+            if attemps <= 1:
                 if status != 2:
                     print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
-                    save_log.adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=INPUT_BLOCK_TIME*-1*default_attempts_value)
+                    save_log.adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=(INPUT_BLOCK_TIME*-1*(default_attempts_value+1)))
                     telegram_sender.send_message(NAME+' - Tunning failure Detected')
                     zabbix_metric.send_status_metric(NAME+" - Tunning failure Detected")
                     status= 2
@@ -270,7 +267,7 @@ try:
             attemps = default_attempts_value
             if status != 3:
                 print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
-                save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
+                save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']), time_offset=(INPUT_BLOCK_TIME*-1))
                 telegram_sender.send_message(NAME+' - On Air.')
                 status= 3
             else:       
@@ -295,6 +292,7 @@ try:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
             check_output('sox -q -t waveaudio {} -c {} -d {} trim 0 {}'.format(AUDIO_DEVICE, CHANNELS, temp_file, INPUT_BLOCK_TIME) )
+            sleep(0.1)
             infos = file_stats(temp_file)
             print("\n")
             verifica_resultados(infos)

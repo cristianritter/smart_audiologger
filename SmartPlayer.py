@@ -15,6 +15,7 @@ import parse_config
 import license_verify
 import os
 from subprocess import check_output
+from threading import Thread
 
 print("Carregando DLLS...")
 try:
@@ -31,7 +32,7 @@ try:
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
     ASSETS_PATH = os.path.join(ROOT_DIR, 'Assets/') 
     BUTTON_DICT = {img[:-4].upper(): ASSETS_PATH + img for img in os.listdir(ASSETS_PATH)}
-    DEFAULT_IMG = ASSETS_PATH + 'background2.png'
+    DEFAULT_IMG = ASSETS_PATH + 'background3.png'
     ICON = ASSETS_PATH + 'player.ico'
 
     print("Carregando configurações...")
@@ -72,9 +73,9 @@ try:
                 if item[-4:] == '.ini':
                     configs_list.append(item)
             main_layout = [
-                [sg.Text('SmartPlayer', font='Fixedsys 45 ', text_color='White')],
-                [sg.Text('Selecione um arquivo de configuração:', font='Fixedsys 12 bold', text_color='gray')],
-                [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15')],
+                [sg.Text('SmartPlayer', font='Fixedsys 45 ', text_color='White', tooltip="By SmartLogger®")],
+                [sg.Text('Configuração:', font='Fixedsys 12 bold', text_color='gray')],
+                [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15',tooltip="Selecione o arquivo de configuração correto para acessar as gravações.")],
                 [sg.Image(os.path.join(ASSETS_PATH, 'wave.png'))],
                 [sg.Text("Tipo de licença encontrada: " + self.license_result, font='Fixedsys 12 bold', text_color='gray')]
             ] 
@@ -87,6 +88,9 @@ try:
     class MediaPlayer:
         failtimes_list = []
         returntimes_list = []
+        time_old = 0
+        segundos_total = 0
+        values = dict()
         def __init__(self, size, scale=1.0, theme='DarkBlue'):
             """ Media player constructor """
             #self.failtimes_list.append(0)
@@ -109,10 +113,10 @@ try:
             self.window = self.create_window()
             self.check_platform()  # Window handler adj for Linux/Windows/MacOS
 
-        def button(self, key, image, **kwargs):
+        def button(self, key, image, tooltip, **kwargs):
             """ Create media player button """
             return sg.Button(image_filename=image, border_width=0, pad=(0, 0), key=key,
-                            button_color=('white', self.default_bg_color))
+                            button_color=('white', self.default_bg_color), tooltip=tooltip)
 
         def create_window(self):
             """ Create GUI instance """
@@ -120,11 +124,11 @@ try:
             
             # Column layout for media player button controls
             buttons_group = [[sg.In(key='CALENDAR', enable_events=True, visible=False), sg.CalendarButton('', image_filename=BUTTON_DICT['CALENDAR'], pad=(0,0),  
-                            button_color=('white', self.default_bg_color), border_width=0, key='CALENDAR', format=('%Y%m%d')),
-                    self.button('START', BUTTON_DICT['START']),
-                    self.button('REWIND', BUTTON_DICT['REWIND']),
-                    self.button('PLAY', BUTTON_DICT['PLAY_OFF']),
-                    self.button('FORWARD', BUTTON_DICT['FORWARD']),
+                            button_color=('white', self.default_bg_color), border_width=0, key='CALENDAR', format=('%Y%m%d'), tooltip="Abrir o CALENDARIO"),
+                    self.button('START', BUTTON_DICT['START'], "Retornar ao inicio da gravação."),
+                    self.button('REWIND', BUTTON_DICT['REWIND'], "Navegar entre os eventos marcados."),
+                    self.button('PLAY', BUTTON_DICT['PLAY_OFF'], "Pausar ou Retormar a execução."),
+                    self.button('FORWARD', BUTTON_DICT['FORWARD'], "Navegar entre os eventos marcados."),
                     ]]
 
             
@@ -135,9 +139,9 @@ try:
             direita_column = [   
                 [sg.Text('Horários disponíveis: ', 
                         font=(sg.DEFAULT_FONT, 8, 'bold'))], 
-                [sg.Listbox(l, size=(40, 24), enable_events=True, key='LISTA')],
+                [sg.Listbox(l, size=(40, 24), enable_events=True, key='LISTA', tooltip="Selecione uma data para visualizar as gravações disponíveis.")],
                 [sg.Text('LOG de ocorrências disponível AQUI', key = 'LOG', 
-                        enable_events=True, font=(sg.DEFAULT_FONT, 9, 'underline'))],
+                        enable_events=True, font=(sg.DEFAULT_FONT, 9, 'underline'), tooltip="Clique para abrir.")],
                 [sg.Text('Copyright ® 2021', key = 'COPYRIGHT', 
                         enable_events=True, font=(sg.DEFAULT_FONT, 8))],
                 
@@ -150,29 +154,25 @@ try:
             # Main GUI layout
 
             coluna_export = [[sg.Text('- Exportação -', justification='center', size=(25,1))],
-                            [sg.Button("Mark In", size=[10,1], button_color=['white','black'], border_width='5', key='MARK_IN'),
-                            sg.Button("Mark Out", size=[10,1], button_color=['black','white'], border_width='5', key='MARK_OUT')], 
-                            [sg.In('00:00', size=[11,1], justification='center', key='IN_TEXT', readonly='True', text_color='black'),
-                            sg.In('00:10', size=[11,1], justification='center', key='OUT_TEXT', readonly='True', text_color='black')],
-                            [sg.FolderBrowse("Export", key='EXPORT', size=[22,1], button_color=['green','white'], pad=[5,5], enable_events=True, disabled=True)],
+                            [sg.Button("Mark In", size=[10,1], button_color=['white','black'], border_width='5', key='MARK_IN', tooltip="Marque a posição de inicio do trecho desejado."),
+                            sg.Button("Mark Out", size=[10,1], button_color=['black','white'], border_width='5', key='MARK_OUT', tooltip="Marque a posição de fim do trecho desejado.")], 
+                            [sg.In('00:00', size=[11,1], justification='center', key='IN_TEXT', readonly='True', text_color='black', tooltip="Você não pode editar manualmente esse campo."),
+                            sg.In('00:10', size=[11,1], justification='center', key='OUT_TEXT', readonly='True', text_color='black', tooltip="Você não pode editar manualmente esse campo.")],
+                            [sg.FolderBrowse("Export", key='EXPORT', size=[22,1], button_color=['green','white'], pad=[5,5], enable_events=True, disabled=True, tooltip="Use para exportar um trecho do audio.")],
                             ]
 
             coluna_esquerda = [
                 [sg.Menu(menu_def, tearoff=False)],
-                # Media output element -- this is the video output element
                 [sg.Image(filename=DEFAULT_IMG, pad=(0, 5), size=self.player_size, key='VID_OUT')],
 
-                # Element for tracking elapsed time
                 [sg.Text('00:00', key='TIME_ELAPSED'),
 
-                # This slide can be used to adjust the playback positon of the video
                 sg.Slider(range=(0, 1), enable_events=True, resolution=0.0001, disable_number_display=True,
-                        background_color='#83D8F5', orientation='h', key='TIME'),
+                        background_color='#83D8F5', orientation='h', key='TIME', tooltip='Tente utilizar a rolagem do mouse para avançar ou retroceder.'),
 
                 # Elements for tracking media length and track counts
                 sg.Text('00:00', key='TIME_TOTAL')],
-                #sg.Text('          ', key='TRACKS')],
-
+              
                 [sg.Graph(canvas_size=(self.player_size[0], 20), graph_bottom_left=(-57, 0), graph_top_right=(840, 20), background_color=self.default_bg_color, enable_events=True, key='GRAPHY')],
                 
                 # Button and media information layout (created above)
@@ -226,6 +226,8 @@ try:
                 self.track_num = 1
                 self.list_player.play()
 
+            self.segundos_total = self.player.get_length() / 1000
+
         def get_time_elapsed(self):
             return "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
 
@@ -251,8 +253,10 @@ try:
                 message = "{}\n{}".format(self.get_meta(1).upper(), self.get_meta(0))
                 self.window['INFO'].update(message)
                 self.window['TIME_ELAPSED'].update(time_elapsed)
-                self.window['TIME'].update(self.player.get_position())
+                windowtime = self.player.get_position()
+                self.window['TIME'].update(windowtime)
                 self.window['TIME_TOTAL'].update(time_total)
+                self.time_old =  windowtime
      
         def play(self):
             """ Called when the play button is pressed """
@@ -343,8 +347,29 @@ try:
             # Increment the track counter
             self.track_cnt = self.media_list.count()
             self.track_num = 1
+            while self.player.get_length() <= 0:
+                sleep(0.1)
         
-        def redraw_fail_positions(self):
+        def redraw_fail_positions(self, values):
+            lognm = "log_"+values['CALENDAR'][0:6]+".txt"
+            logfile = os.path.join(log_folder, lognm)
+            
+            if not os.path.exists(logfile):
+                f = open(logfile, 'a')
+                f.write("\n")
+                f.close()
+            f = open(logfile, "r")
+
+            dados = values['LISTA'][0]
+            logtext = (dados[6:8] + '/' + dados[4:6] + '/' + dados[:4] + ' ' + dados[9:11])
+            for x in f: #le linhas
+                if logtext in x:
+                    pos = int(x[14:16])*60+int(x[17:19]) #posicao segundos
+                    if 'On Air' in x:
+                        self.returntimes_list.append(pos)
+                    else:
+                        self.failtimes_list.append(pos) #seconds
+
             segundos_total = self.player.get_length() / 1000
             graph = self.window['GRAPHY']  
             graph.DrawRectangle((-0, 0), (self.player_size[0]-180,20), fill_color='black')
@@ -375,19 +400,27 @@ try:
         sg.popup('Falha ao validar a licença', 'Adquira uma permissão para utilizar o aplicativo')
         EXIT()
 
+    def atualiza(mp):
+        while 1:
+            if mp.segundos_total != mp.player.get_length() / 1000 and mp.segundos_total > 0:
+                        mp.redraw_fail_positions(mp.values)
+            mp.get_track_info() 
+            sleep(1)
+    
     def main():
         select_config_window(license_result)
         mp = MediaPlayer(size=(1920, 720), scale=0.5)
-        
+        T = Thread(target=atualiza, args=(mp,), daemon=True)
+        T.start()
         while True:
-            event, values = mp.window.read(timeout=20)
-            mp.get_track_info() 
+            if not T.is_alive():
+                T = Thread(target=atualiza, args=(mp,), daemon=True)
+                T.start()
+                print("Reiniciando...")
+            event, mp.values = mp.window.read(timeout=500)
             if event == None or event == 'Exit':
                 EXIT()
-            if len(values['LISTA']) > 0:
-                if 'segundos_total' in locals():
-                    if segundos_total != mp.player.get_length() / 1000:
-                        mp.redraw_fail_positions()
+
             if event == "Open config":
                 l.clear()
                 mp.window['LISTA'].update(l)
@@ -396,16 +429,21 @@ try:
                 mp.window.Hide()
                 select_config_window(license_result)
                 mp.window.UnHide()
+            
             if event == 'MouseWheel:Down':
-                if not len(values['LISTA']) > 0:
-                    continue
-                limite = 0.002/(mp.player.get_length()/3600000)
-                mp.player.set_position(values['TIME']-limite)
+                if mp.player.get_length() < 0:
+                    continue    
+                mp.player.set_position(mp.values['TIME']-(0.003/(mp.player.get_length()/3600000)))
                 mp.get_track_info()
                 sleep(0.2)
-                print(event)
+            
             if event == 'MouseWheel:Up':
-                print(event)
+                if mp.player.get_length() < 0:
+                    continue
+                mp.player.set_position(mp.values['TIME']+(0.003/(mp.player.get_length()/3600000)))
+                mp.get_track_info()
+                sleep(0.2)
+                
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
             if event == 'PLAY':
@@ -417,31 +455,34 @@ try:
                 mp.jump_previous_fail()
 
             if event == 'TIME':
-                if not len(values['LISTA']) > 0:
+                if round(mp.values['TIME'],3) == round(mp.time_old,3):
                     continue
                 limite = 0.002/(mp.player.get_length()/3600000)
-                mp.player.set_position(values['TIME']-limite)
+                if mp.values['TIME'] > (1-limite):
+                    mp.player.set_position(mp.values['TIME']-limite)
+                else:
+                    mp.player.set_position(mp.values['TIME'])
                 mp.get_track_info()
-                sleep(0.2)
+                sleep(0.1)
                 
             if event == 'START':
                 mp.jump_to_begin()
             
             if event == 'LOG':
-                if (len(values['CALENDAR'])) == 0:
-                    values['CALENDAR']=datetime.now().strftime('%Y%m%d')
-                lognm = "log_"+values['CALENDAR'][0:6]+".txt"
+                if (len(mp.values['CALENDAR'])) == 0:
+                    mp.values['CALENDAR']=datetime.now().strftime('%Y%m%d')
+                lognm = "log_"+mp.values['CALENDAR'][0:6]+".txt"
                 logfile = os.path.join(log_folder, lognm)
                 if os.path.exists(logfile):
                     webbrowser.open(logfile)
 
             if event == 'CALENDAR':
-                if (len(values['CALENDAR']) == 0):
+                if (len(mp.values['CALENDAR']) == 0):
                     continue
                 mp.window['EXPORT'].Update(disabled=True)     
                 mp.stop()
                 mp.add_media()
-                folder = values['CALENDAR']+'\\'
+                folder = mp.values['CALENDAR']+'\\'
                 sourcepath = os.path.join(definitive_folder, folder)
                 l.clear()
                 if not os.path.exists(sourcepath):
@@ -455,65 +496,47 @@ try:
                 mp.window['LISTA'].update(l)
 
             if event == 'MARK_IN':
-                if (len(values['LISTA'])) == 0:
+                if (len(mp.values['LISTA'])) == 0:
                     continue
                 mp.window['IN_TEXT'].update(mp.get_time_elapsed())
                 
             if event == 'MARK_OUT':
-                if (len(values['LISTA'])) == 0:
+                if (len(mp.values['LISTA'])) == 0:
                     continue
                 mp.window['OUT_TEXT'].update(mp.get_time_elapsed())
 
             if event == 'EXPORT':
-                if (len(values['LISTA'])) == 0 or (len (values['EXPORT'])) == 0:
+                if (len(mp.values['LISTA'])) == 0 or (len (values['EXPORT'])) == 0:
                     continue
-                current_filepath = mp.get_current_audio_filepath(values)
+                current_filepath = mp.get_current_audio_filepath(mp.values)
                 filename = str(current_filepath[:-4]).split('\\')
-                begin_seconds = int(values['IN_TEXT'][0:2])*60 + int(values['IN_TEXT'][3:5]) 
-                end_seconds = int(values['OUT_TEXT'][0:2])*60 + int(values['OUT_TEXT'][3:5])
+                begin_seconds = int(mp.values['IN_TEXT'][0:2])*60 + int(mp.values['IN_TEXT'][3:5]) 
+                end_seconds = int(mp.values['OUT_TEXT'][0:2])*60 + int(mp.values['OUT_TEXT'][3:5])
                 segundos_total = mp.player.get_length() / 1000
                 if begin_seconds >= end_seconds or end_seconds > segundos_total:
                     sg.popup("ATENÇÃO", "Erro na marcação de entrada e saída. Tente novamente." ) 
                     continue
-                dest = os.path.join(values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
+                dest = os.path.join(mp.values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
                 check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
-                sg.popup("Que legal! O arquivo já está disponível na pasta: ", values['EXPORT'])
+                sg.popup("Que legal! O arquivo já está disponível na pasta: ", mp.values['EXPORT'])
                 pass
 
             if event == 'LISTA':
                 mp.stop()
                 mp.failtimes_list.clear()
                 mp.returntimes_list.clear()  
-                if (len(values['LISTA'])) == 0:
+                if (len(mp.values['LISTA'])) == 0:
                     continue
-                filename = mp.get_current_audio_filepath(values)
-                dados = values['LISTA'][0]
+                filename = mp.get_current_audio_filepath(mp.values)
                 if not os.path.exists(filename):
                     sg.popup("Arquivo não disponível. Por favor atualize a lista.")
                     continue
-                mp.load_single_track(filename)
-                while mp.player.get_length() == 0:
-                    sleep(0.1)
+                mp.load_single_track(filename)      
                 mp.list_player.next()
-                segundos_total = mp.player.get_length() / 1000
-                if segundos_total > 0:
+                #segundos_total = mp.player.get_length() / 1000
+                if mp.segundos_total > 0:
                     mp.window['EXPORT'].Update(disabled=False)
-                lognm = "log_"+values['CALENDAR'][0:6]+".txt"
-                logfile = os.path.join(log_folder, lognm)
-                if not os.path.exists(logfile):
-                    f = open(logfile, 'a')
-                    f.write("\n")
-                    f.close()
-                f = open(logfile, "r")
-                logtext = (dados[6:8] + '/' + dados[4:6] + '/' + dados[:4] + ' ' + dados[9:11])
-                for x in f: #le linhas
-                    if logtext in x:
-                        pos = int(x[14:16])*60+int(x[17:19]) #posicao segundos
-                        if 'On Air' in x:
-                            mp.returntimes_list.append(pos)
-                        else:
-                            mp.failtimes_list.append(pos) #seconds
-                mp.redraw_fail_positions()
+                mp.redraw_fail_positions(mp.values)
                     
     if __name__ == '__main__':
         main()
