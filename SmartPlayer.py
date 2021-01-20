@@ -121,10 +121,13 @@ try:
             # Column layout for media player button controls
             buttons_group = [[sg.In(key='CALENDAR', enable_events=True, visible=False), sg.CalendarButton('', image_filename=BUTTON_DICT['CALENDAR'], pad=(0,0),  
                             button_color=('white', self.default_bg_color), border_width=0, key='CALENDAR', format=('%Y%m%d')),
-                    self.button('START', BUTTON_DICT['START']),
-                    self.button('REWIND', BUTTON_DICT['REWIND']),
+                    self.button('REWIND', BUTTON_DICT['START']),
+                    self.button('REWIND_10', BUTTON_DICT['REWIND_10']),
+                    self.button('REWIND_1', BUTTON_DICT['REWIND_1']),
                     self.button('PLAY', BUTTON_DICT['PLAY_OFF']),
-                    self.button('FORWARD', BUTTON_DICT['FORWARD']),
+                    self.button('FORWARD_1', BUTTON_DICT['FORWARD_1']),
+                    self.button('FORWARD_10', BUTTON_DICT['FORWARD_10']),
+                    self.button('FORWARD', BUTTON_DICT['END']),
                     ]]
 
             
@@ -404,17 +407,34 @@ try:
                 mp.get_track_info()
                 sleep(0.2)
                 print(event)
+            
             if event == 'MouseWheel:Up':
                 print(event)
+            
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
+            
             if event == 'PLAY':
                 mp.play()
                 mp.window['EXPORT'].Update(disabled=False)
+            
             if event == 'FORWARD':
                 mp.jump_next_fail()
+            
+            if event == 'FORWARD_1':
+                mp.player.set_position(values['TIME']+0.1)
+
+            if event == 'FORWARD_10':
+                mp.player.set_position(values['TIME']+0.1)
+            
             if event == 'REWIND':
                 mp.jump_previous_fail()
+
+            if event == 'REWIND_1':
+                mp.player.set_position(values['TIME']-0.1)
+
+            if event == 'REWIND_10':
+                mp.player.set_position(values['TIME']-0.1)
 
             if event == 'TIME':
                 if not len(values['LISTA']) > 0:
@@ -424,9 +444,6 @@ try:
                 mp.get_track_info()
                 sleep(0.2)
                 
-            if event == 'START':
-                mp.jump_to_begin()
-            
             if event == 'LOG':
                 if (len(values['CALENDAR'])) == 0:
                     values['CALENDAR']=datetime.now().strftime('%Y%m%d')
