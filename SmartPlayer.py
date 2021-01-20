@@ -226,8 +226,6 @@ try:
                 self.track_num = 1
                 self.list_player.play()
 
-            self.segundos_total = self.player.get_length() / 1000
-
         def get_time_elapsed(self):
             return "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
 
@@ -349,6 +347,8 @@ try:
             self.track_num = 1
             while self.player.get_length() <= 0:
                 sleep(0.1)
+            
+            self.segundos_total = self.player.get_length() / 1000
         
         def redraw_fail_positions(self, values):
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
@@ -380,6 +380,14 @@ try:
             for item in self.returntimes_list:
                 graph.DrawLine (((window_size/segundos_total)*item, 0), ((window_size/segundos_total)*item, 20), color='white', width = 3)
 
+        def is_in_out_ok(self):
+            begin_seconds = int(self.values['IN_TEXT'][0:2])*60 + int(self.values['IN_TEXT'][3:5]) 
+            end_seconds = int(self.values['OUT_TEXT'][0:2])*60 + int(self.values['OUT_TEXT'][3:5])
+            segundos_total = self.player.get_length() / 1000
+            if begin_seconds > end_seconds or end_seconds > segundos_total:            
+                self.window['EXPORT'].Update(disabled=True)
+            else:
+                self.window['EXPORT'].Update(disabled=False)
 
     def select_config_window(license_result):
         lg = config_select(license_result, size=(500, 500), scale=0.5)
@@ -404,6 +412,10 @@ try:
         while 1:
             if mp.segundos_total != mp.player.get_length() / 1000 and mp.segundos_total > 0:
                         mp.redraw_fail_positions(mp.values)
+                        mp.segundos_total = mp.player.get_length() / 1000
+            if mp.segundos_total > 0:
+                mp.is_in_out_ok()
+
             mp.get_track_info() 
             sleep(1)
     
@@ -417,7 +429,7 @@ try:
                 T = Thread(target=atualiza, args=(mp,), daemon=True)
                 T.start()
                 print("Reiniciando...")
-            event, mp.values = mp.window.read(timeout=500)
+            event, mp.values = mp.window.read(timeout=200)
             if event == None or event == 'Exit':
                 EXIT()
 
@@ -448,9 +460,10 @@ try:
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
             if event == 'PLAY':
                 mp.play()
-                mp.window['EXPORT'].Update(disabled=False)
+            
             if event == 'FORWARD':
                 mp.jump_next_fail()
+            
             if event == 'REWIND':
                 mp.jump_previous_fail()
 
@@ -479,7 +492,6 @@ try:
             if event == 'CALENDAR':
                 if (len(mp.values['CALENDAR']) == 0):
                     continue
-                mp.window['EXPORT'].Update(disabled=True)     
                 mp.stop()
                 mp.add_media()
                 folder = mp.values['CALENDAR']+'\\'
@@ -496,29 +508,28 @@ try:
                 mp.window['LISTA'].update(l)
 
             if event == 'MARK_IN':
-                if (len(mp.values['LISTA'])) == 0:
+                mp.window['EXPORT'].update(disabled=True)
+                if (mp.segundos_total) <= 0:
                     continue
                 mp.window['IN_TEXT'].update(mp.get_time_elapsed())
                 
             if event == 'MARK_OUT':
-                if (len(mp.values['LISTA'])) == 0:
+                mp.window['EXPORT'].update(disabled=True)
+                if (mp.segundos_total) <= 0:
                     continue
                 mp.window['OUT_TEXT'].update(mp.get_time_elapsed())
-
+                
             if event == 'EXPORT':
-                if (len(mp.values['LISTA'])) == 0 or (len (values['EXPORT'])) == 0:
+                if (len(mp.values['LISTA'])) == 0 or (len (mp.values['EXPORT'])) == 0:
                     continue
                 current_filepath = mp.get_current_audio_filepath(mp.values)
                 filename = str(current_filepath[:-4]).split('\\')
                 begin_seconds = int(mp.values['IN_TEXT'][0:2])*60 + int(mp.values['IN_TEXT'][3:5]) 
                 end_seconds = int(mp.values['OUT_TEXT'][0:2])*60 + int(mp.values['OUT_TEXT'][3:5])
-                segundos_total = mp.player.get_length() / 1000
-                if begin_seconds >= end_seconds or end_seconds > segundos_total:
-                    sg.popup("ATENÇÃO", "Erro na marcação de entrada e saída. Tente novamente." ) 
-                    continue
+                
                 dest = os.path.join(mp.values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
                 check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
-                sg.popup("Que legal! O arquivo já está disponível na pasta: ", mp.values['EXPORT'])
+                sg.popup("Que legal! O arquivo já está disponível na pasta: ", dest)
                 pass
 
             if event == 'LISTA':
@@ -533,9 +544,6 @@ try:
                     continue
                 mp.load_single_track(filename)      
                 mp.list_player.next()
-                #segundos_total = mp.player.get_length() / 1000
-                if mp.segundos_total > 0:
-                    mp.window['EXPORT'].Update(disabled=False)
                 mp.redraw_fail_positions(mp.values)
                     
     if __name__ == '__main__':

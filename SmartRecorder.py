@@ -282,10 +282,18 @@ try:
             sleep(50)
             EXIT()
 
+    def apagar_arquivos_antigos():
+        print(configs['FILES']['lifetime'])
+        #sleep(3600*24)
+        sleep(5)
+
     carregar_licenca()
     
     t = Thread(target=gravar)
     t.start()
+
+    antigos = Thread(target=apagar_arquivos_antigos)
+    antigos.start()
 
     def Main():
         while 1:
