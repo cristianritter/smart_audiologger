@@ -37,6 +37,12 @@ try:
     attemps = default_attempts_value
     status = 5
 
+    print("Verificando diretórios")
+    if not os.path.exists(definitive_folder):
+        os.mkdir(definitive_folder)
+    if not os.path.exists(temp_folder):
+        os.mkdir(temp_folder)
+
     print ("Definindo classes e funções... ")  
 
     def finaliza(definitive_hour_file, definitive_partial_file, comm_append_partial, comm_append_synth):
@@ -47,9 +53,9 @@ try:
 
         comando = 'sox --combine concatenate {} {} {}  {}'.format(
                         comm_append_partial, comm_append_synth, comm_append_final, definitive_full_file)    
-        print(comando)
-        result = check_output(comando)
-        print(result)
+        #print(comando)
+        check_output(comando)
+        #print(result)
         try:
             if os.path.exists(definitive_partial_file):
                 os.remove(definitive_partial_file)
@@ -63,8 +69,8 @@ try:
         while 1:
             print('Iniciando loop. Current seconds=', current_seconds())
             if current_seconds() > 3500:
-                print('nao entrou ainda')
-                print(current_seconds())
+                print('Aguardando o inicio da próxima hora para iniciar a gravação.)
+                sleep(1)
                 continue
           
             definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
@@ -125,7 +131,6 @@ try:
         currentseconds = int(currentminutesseconds[0:2])*60+int(currentminutesseconds[3:5])
         return currentseconds
         
-
     def compair_fingerprint(): 
         finger1 = calculate_fingerprints(os.path.join(parse_config.ROOT_DIR, configs['FILES']['sample_file']))
         finger2 = calculate_fingerprints(temp_file)
@@ -286,17 +291,18 @@ try:
             EXIT()
 
     def apagar_arquivos_antigos():
-        limit_date = int(  (datetime.now()-timedelta(days=LIFETIME)  ).strftime('%Y%m%d'))
-        for e in os.scandir(definitive_folder):
-            if e.is_dir():
-                if e.name.isdigit():
-                    if int(e.name) < limit_date:
-                        print(e.name)
-                        try:
-                            rmtree(os.path.join(definitive_folder, e.name))
-                        except Exception as ERR:
-                            save_log.adiciona_linha_log(ERR)
-        sleep(3600)
+        while 1:
+            limit_date = int(  (datetime.now()-timedelta(days=LIFETIME)  ).strftime('%Y%m%d'))
+            for e in os.scandir(definitive_folder):
+                if e.is_dir():
+                    if e.name.isdigit():
+                        if int(e.name) < limit_date:
+                            print(e.name)
+                            try:
+                                rmtree(os.path.join(definitive_folder, e.name))
+                            except Exception as ERR:
+                                save_log.adiciona_linha_log(ERR)
+            sleep(3600)
     
     carregar_licenca()
     
@@ -319,4 +325,5 @@ try:
     Main()
 except Exception as Err:
     print (Err)
+    save_log.adiciona_linha_log (Err)
     sleep(50)
