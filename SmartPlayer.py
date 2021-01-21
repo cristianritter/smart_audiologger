@@ -88,12 +88,12 @@ try:
     class MediaPlayer:
         failtimes_list = []
         returntimes_list = []
+        jump_list = []
         time_old = 0
         segundos_total = 0
         values = dict()
         def __init__(self, size, scale=1.0, theme='DarkBlue'):
             """ Media player constructor """
-            #self.failtimes_list.append(0)
             self.paused = False
             # Setup media player
             self.instance = vlc.Instance()
@@ -137,10 +137,12 @@ try:
             
             # Column layout for media info and instructions
             info_column = [[sg.Text('Loading...',
-                            size=(60, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
+                            size=(45, 3), font=(sg.DEFAULT_FONT, 8), pad=(0, 5), key='INFO')]]
 
             direita_column = [   
-                [sg.Text('Horários disponíveis: ', 
+                [sg.Text('dd/mm/aaaa',
+                        font=(sg.DEFAULT_FONT, 8, 'bold'), key='NOW'), 
+                sg.Text('Horários disponíveis: ', 
                         font=(sg.DEFAULT_FONT, 8, 'bold'))], 
                 [sg.Listbox(l, size=(40, 24), enable_events=True, key='LISTA', tooltip="Selecione uma data para visualizar as gravações disponíveis.")],
                 [sg.Text('LOG de ocorrências disponível AQUI', key = 'LOG', 
@@ -249,7 +251,6 @@ try:
             time_elapsed = "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
             time_total = "{:02d}:{:02d}".format(*divmod(self.player.get_length() // 1000, 60))
             if self.media_list.count() == 0:
-                pass
                 self.window['INFO'].update('Selecione uma data no CALENDARIO.')
             else:
                 message = "{}\n{}".format(self.get_meta(1).upper(), self.get_meta(0))
@@ -292,17 +293,13 @@ try:
             self.get_track_info()
 
         def jump_next_fail(self):
-            if len(self.failtimes_list) == 0 and len(self.returntimes_list) == 0:
+            if len(self.jump_list) == 0:
                 return
             destino = 0
-            self.failtimes_list += self.returntimes_list
-            self.failtimes_list = sorted(self.failtimes_list)
-
-            for item in self.failtimes_list:
+            for item in self.jump_list:
                 if (self.player.get_time() / 1000) < (item - (INPUT_BLOCK_TIME+5)):
                     destino = item - (INPUT_BLOCK_TIME+5)
-                    break
-                
+                    break  
             tamanho = self.player.get_length() // 1000
             position = 0
             if tamanho != 0:
@@ -312,21 +309,17 @@ try:
 
         def jump_previous_fail(self):
             """ Called when the skip previous button is pressed """
-            if len(self.failtimes_list) == 0 or len(self.returntimes_list) == 0:
+            if len(self.jump_list) == 0:
                 return
             destino = 0
-            self.failtimes_list += self.returntimes_list
-            self.failtimes_list = sorted(self.failtimes_list)
-            for item in reversed(self.failtimes_list):
+            for item in reversed(self.jump_list):
                 if ((self.player.get_time() / 1000)-1) > (item - (INPUT_BLOCK_TIME+5)):
                     destino = item - (INPUT_BLOCK_TIME+5)
                     break
-
             tamanho = self.player.get_length() // 1000
             position = 0
             if tamanho != 0:
                 position = destino / tamanho
-            
             self.player.set_position(position)
             self.get_track_info()
                 
@@ -366,14 +359,16 @@ try:
 
             dados = values['LISTA'][0]
             logtext = (dados[6:8] + '/' + dados[4:6] + '/' + dados[:4] + ' ' + dados[9:11])
+            self.jump_list.append(0)
             for x in f: #le linhas
                 if logtext in x:
                     pos = int(x[14:16])*60+int(x[17:19]) #posicao segundos
+                    self.jump_list.append(pos)
                     if 'On Air' in x:
                         self.returntimes_list.append(pos)
                     else:
                         self.failtimes_list.append(pos) #seconds
-
+                    
             segundos_total = self.player.get_length() / 1000
             graph = self.window['GRAPHY']  
             graph.DrawRectangle((-0, 0), (self.player_size[0]-180,20), fill_color='black')
@@ -414,6 +409,11 @@ try:
 
     def atualiza(mp):
         while 1:
+            if not 'CALENDAR' in mp.values:
+                mp.window['CALENDAR'].update(datetime.now().strftime('%Y%m%d'))
+                mp.values['CALENDAR'] = datetime.now().strftime('%Y%m%d')
+                calendar_event(mp)
+
             if mp.segundos_total != mp.player.get_length() / 1000 and mp.segundos_total > 0:
                         mp.redraw_fail_positions(mp.values)
                         mp.segundos_total = mp.player.get_length() / 1000
@@ -421,6 +421,25 @@ try:
                 mp.is_in_out_ok()
             mp.get_track_info() 
             sleep(1)
+
+    def calendar_event(mp):
+        if (len(mp.values['CALENDAR']) == 0):
+            return
+        mp.window['NOW'].update(mp.values['CALENDAR'][6:8] + '/' + mp.values['CALENDAR'][3:5] + '/' + mp.values['CALENDAR'][:4])
+        mp.stop()
+        mp.add_media()
+        folder = mp.values['CALENDAR']+'\\'
+        sourcepath = os.path.join(definitive_folder, folder)
+        l.clear()
+        if not os.path.exists(sourcepath):
+            mp.window['LISTA'].update(l)
+            return
+        for e in os.listdir(sourcepath):
+            if 'partial' in e:
+                continue
+            else:
+                l.append(e)
+        mp.window['LISTA'].update(l)
     
     def main():
         select_config_window(license_result)
@@ -432,7 +451,7 @@ try:
                 T = Thread(target=atualiza, args=(mp,), daemon=True)
                 T.start()
                 print("Reiniciando...")
-            event, mp.values = mp.window.read(timeout=100)
+            event, mp.values = mp.window.read(timeout=500)
             if event == None or event == 'Exit':
                 EXIT()
 
@@ -440,22 +459,20 @@ try:
                 l.clear()
                 mp.window['LISTA'].update(l)
                 mp.stop()
-                event = 'CALENDAR'
+                calendar_event(mp)
                 mp.window.Hide()
                 select_config_window(license_result)
                 mp.window.UnHide()
             
             if event == 'MouseWheel:Down':
-                if mp.player.get_length() < 0:
-                    continue    
-                mp.player.set_position(mp.values['TIME']-(0.003/(mp.player.get_length()/3600000)))
+                mp.player.set_position(mp.values['TIME']-(0.0003/(mp.player.get_length()/3600000)))
                 mp.get_track_info()
+                sleep(0.05)
                 
             if event == 'MouseWheel:Up':
-                if mp.player.get_length() < 0:
-                    continue
-                mp.player.set_position(mp.values['TIME']+(0.003/(mp.player.get_length()/3600000)))
+                mp.player.set_position(mp.values['TIME']+(0.0003/(mp.player.get_length()/3600000)))
                 mp.get_track_info()
+                sleep(0.05)
                 
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
@@ -467,23 +484,27 @@ try:
                 mp.jump_next_fail()
             
             if event == 'FORWARD_1':
-                limite = 0.0005/(mp.player.get_length()/3600000)
+                limite = 0.0003/(mp.player.get_length()/3600000)
                 mp.player.set_position(mp.values['TIME']+limite)
+                mp.get_track_info()
 
             if event == 'FORWARD_10':
                 limite = 0.0028/(mp.player.get_length()/3600000)
                 mp.player.set_position(mp.values['TIME']+limite)
+                mp.get_track_info()
 
             if event == 'REWIND':
                 mp.jump_previous_fail()
 
             if event == 'REWIND_1':
-                limite = 0.0005/(mp.player.get_length()/3600000)
+                limite = 0.0003/(mp.player.get_length()/3600000)
                 mp.player.set_position(mp.values['TIME']-limite)
+                mp.get_track_info()
 
             if event == 'REWIND_10':
                 limite = 0.0028/(mp.player.get_length()/3600000)
                 mp.player.set_position(mp.values['TIME']-limite)
+                mp.get_track_info()
 
             if event == 'TIME':
                 if round(mp.values['TIME'],3) == round(mp.time_old,3):
@@ -505,22 +526,7 @@ try:
                     webbrowser.open(logfile)
 
             if event == 'CALENDAR':
-                if (len(mp.values['CALENDAR']) == 0):
-                    continue
-                mp.stop()
-                mp.add_media()
-                folder = mp.values['CALENDAR']+'\\'
-                sourcepath = os.path.join(definitive_folder, folder)
-                l.clear()
-                if not os.path.exists(sourcepath):
-                    mp.window['LISTA'].update(l)
-                    continue
-                for e in os.listdir(sourcepath):
-                    if 'partial' in e:
-                        continue
-                    else:
-                        l.append(e)
-                mp.window['LISTA'].update(l)
+                calendar_event(mp)
 
             if event == 'MARK_IN':
                 mp.window['EXPORT'].update(disabled=True)

@@ -14,6 +14,7 @@ try:
     import save_log
     import zabbix_metric
     import telegram_sender
+    from shutil import rmtree
 
     print ("Carregando configurações... ")
     configuration = parse_config.ConfPacket()
@@ -28,7 +29,9 @@ try:
     AUDIO_COMPRESSION = configs['AUDIO_PARAM']['compression']
     AUDIO_DEVICE = int(configs['AUDIO_PARAM']['device_index'])
     CHANNELS = int(configs['AUDIO_PARAM']['channels'])
+    INPUT_GAIN = int(configs['AUDIO_PARAM']['input_gain'])
     NAME = configs['FILES']['name']
+    LIFETIME = int(configs['FILES']['lifetime'])
 
     default_attempts_value = 3
     attemps = default_attempts_value
@@ -107,8 +110,8 @@ try:
                 comm_append_synth = '"|sox -n -C {} -c {} -p synth {} pl D2"'.format(
                             AUDIO_COMPRESSION, CHANNELS, silence_time)
 
-            comm_gravacao = 'sox -q -t waveaudio {} -C {} -c {} {} trim 0 {}'.format(
-                        AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, current_record_length)
+            comm_gravacao = 'sox -q -t waveaudio {} -C {} -c {} {} gain {} trim 0 {}'.format(
+                        AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, INPUT_GAIN, current_record_length)
 
             print('Iniciando a gravação. Current seconds=', current_seconds())
             check_output(comm_gravacao)
@@ -283,10 +286,18 @@ try:
             EXIT()
 
     def apagar_arquivos_antigos():
-        print(configs['FILES']['lifetime'])
-        #sleep(3600*24)
-        sleep(5)
-
+        limit_date = int(  (datetime.now()-timedelta(days=LIFETIME)  ).strftime('%Y%m%d'))
+        for e in os.scandir(definitive_folder):
+            if e.is_dir():
+                if e.name.isdigit():
+                    if int(e.name) < limit_date:
+                        print(e.name)
+                        try:
+                            rmtree(os.path.join(definitive_folder, e.name))
+                        except Exception as ERR:
+                            save_log.adiciona_linha_log(ERR)
+        sleep(3600)
+    
     carregar_licenca()
     
     t = Thread(target=gravar)
@@ -299,7 +310,7 @@ try:
         while 1:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
-            check_output('sox -q -t waveaudio {} -c {} -d {} trim 0 {}'.format(AUDIO_DEVICE, CHANNELS, temp_file, INPUT_BLOCK_TIME) )
+            check_output('sox -q -t waveaudio {} -c {} -d {} gain {} trim 0 {}'.format(AUDIO_DEVICE, CHANNELS, temp_file, INPUT_GAIN, INPUT_BLOCK_TIME) )
             sleep(0.1)
             infos = file_stats(temp_file)
             print("\n")
