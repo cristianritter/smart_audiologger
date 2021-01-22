@@ -48,6 +48,9 @@ try:
         definitive_folder = os.path.join(configs['FILES']['saved_files_folder'])
         global INPUT_BLOCK_TIME
         INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
+        global NAME
+        NAME = (configs['FILES']['name'])
+        
 
     l = []
 
@@ -71,7 +74,7 @@ try:
             main_layout = [
                 [sg.Text('SmartPlayer', font='Fixedsys 45 ', text_color='White', tooltip="By SmartLogger®")],
                 [sg.Text('Configuração:', font='Fixedsys 12 bold', text_color='gray')],
-                [sg.Combo((configs_list), size=(30,1), key = 'CONFIG', font='Courier 15',tooltip="Selecione o arquivo de configuração correto para acessar as gravações.")],
+                [sg.Listbox((configs_list), size=(30,4), key = 'CONFIG', font='Courier 15',tooltip="Selecione o arquivo de configuração correto para acessar as gravações.")],
                 [sg.Image(os.path.join(ASSETS_PATH, 'wave.png'))],
                 [sg.Text("Tipo de licença encontrada: " + self.license_result, font='Fixedsys 12 bold', text_color='gray')]
             ] 
@@ -387,7 +390,12 @@ try:
             self.player.audio_set_mute(False)
             self.get_track_info()
 
-    def select_config_window(license_result):
+    def select_config_window(license_result, mp):
+        mp.stop()
+        l.clear()
+        mp.window['LISTA'].update(l)
+        mp.window.Hide()
+      
         lg = config_select(license_result, size=(500, 500), scale=0.5)
         lg.window.force_focus()
         while 1:
@@ -395,10 +403,14 @@ try:
             if event == None:
                 EXIT()
             if(len(values['CONFIG']) > 0):
-                if os.path.exists(os.path.join(ROOT_DIR, values['CONFIG'])):
-                    select_config_file(values['CONFIG'])
+                if os.path.exists(os.path.join(ROOT_DIR, values['CONFIG'][0])):
+                    select_config_file(values['CONFIG'][0])
                     break
         lg.window.Close()
+
+        calendar_event(mp)
+        mp.window.set_title('SmartPlayer - {}'.format(NAME))
+        mp.window.UnHide()
 
     License = license_verify.Lic()
     license_result = License.verifica(0)
@@ -422,7 +434,7 @@ try:
             sleep(1)
 
     def calendar_event(mp):
-        if (len(mp.values['CALENDAR']) == 0):
+        if not 'CALENDAR' in mp.values:
             return
         mp.window['NOW'].update(mp.values['CALENDAR'][6:8] + '/' + mp.values['CALENDAR'][3:5] + '/' + mp.values['CALENDAR'][:4])
         mp.stop()
@@ -439,13 +451,10 @@ try:
             else:
                 l.append(e)
         mp.window['LISTA'].update(l)
-
-   
-
     
     def main():
-        select_config_window(license_result)
         mp = MediaPlayer(size=(1920, 720), scale=0.5)
+        select_config_window(license_result, mp)
         T = Thread(target=atualiza, args=(mp,), daemon=True)
         T.start()
         while True:
@@ -458,13 +467,7 @@ try:
                 EXIT()
 
             if event == "Open config":
-                mp.stop()
-                l.clear()
-                mp.window['LISTA'].update(l)
-                mp.window.Hide()
-                select_config_window(license_result)
-                calendar_event(mp)
-                mp.window.UnHide()
+                select_config_window(license_result, mp)
             
             if event == 'MouseWheel:Up':
                 mp.set_position(mp.values['TIME']-(0.0003/(mp.player.get_length()/3600000)))

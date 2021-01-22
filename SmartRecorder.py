@@ -47,15 +47,12 @@ try:
 
     def finaliza(definitive_hour_file, definitive_partial_file, comm_append_partial, comm_append_synth):
         definitive_full_file = definitive_hour_file[:-4]+'_full.mp3'
-
         comm_append_final = '"|sox {} -C {} -c {} -p"'.format(
                             definitive_hour_file, AUDIO_COMPRESSION, CHANNELS)
-
         comando = 'sox --combine concatenate {} {} {}  {}'.format(
                         comm_append_partial, comm_append_synth, comm_append_final, definitive_full_file)    
-        #print(comando)
         check_output(comando)
-        #print(result)
+
         try:
             if os.path.exists(definitive_partial_file):
                 os.remove(definitive_partial_file)
@@ -300,7 +297,7 @@ try:
                             try:
                                 rmtree(os.path.join(definitive_folder, e.name))
                             except Exception as ERR:
-                                save_log.adiciona_linha_log(ERR)
+                                save_log.adiciona_linha_log(str(ERR))
             sleep(3600)
     
     carregar_licenca()
@@ -324,5 +321,5 @@ try:
     Main()
 except Exception as Err:
     print (Err)
-    save_log.adiciona_linha_log (Err)
+    save_log.adiciona_linha_log (str(Err))
     sleep(50)
