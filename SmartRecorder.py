@@ -69,7 +69,7 @@ try:
         while 1:
             print('Iniciando loop. Current seconds=', current_seconds())
             if current_seconds() > 3500:
-                print('Aguardando o inicio da próxima hora para iniciar a gravação.)
+                print('Aguardando o inicio da próxima hora para iniciar a gravação.')
                 sleep(1)
                 continue
           
@@ -297,7 +297,6 @@ try:
                 if e.is_dir():
                     if e.name.isdigit():
                         if int(e.name) < limit_date:
-                            print(e.name)
                             try:
                                 rmtree(os.path.join(definitive_folder, e.name))
                             except Exception as ERR:

@@ -42,10 +42,6 @@ try:
         configs = configuration.load_config('FILES, AUDIO_PARAM', filename)
         global temp_folder
         temp_folder = configs['FILES']['temp_folder']
-        global temp_hour_file_i
-        temp_hour_file_i = os.path.join(temp_folder,'hour_file_i.mp3')
-        global temp_hour_file_p
-        temp_hour_file_p = os.path.join(temp_folder,'hour_file_p.mp3')
         global log_folder
         log_folder = configs['FILES']['log_folder']
         global definitive_folder
@@ -247,6 +243,7 @@ try:
             return media.get_meta(meta_type)
 
         def get_track_info(self):
+            sleep(0.1)
             """ Show author, title, and elasped time if video is loaded and playing """
             time_elapsed = "{:02d}:{:02d}".format(*divmod(self.player.get_time() // 1000, 60))
             time_total = "{:02d}:{:02d}".format(*divmod(self.player.get_length() // 1000, 60))
@@ -288,10 +285,6 @@ try:
                 image_filename=BUTTON_DICT['PLAY_OFF'] if self.player.is_playing() else BUTTON_DICT['PLAY_ON'])
             self.player.pause()
 
-        def jump_to_begin(self):
-            self.player.set_position(0)
-            self.get_track_info()
-
         def jump_next_fail(self):
             if len(self.jump_list) == 0:
                 return
@@ -304,8 +297,7 @@ try:
             position = 0
             if tamanho != 0:
                 position = destino / tamanho
-            self.player.set_position(position)
-            self.get_track_info()
+            self.set_position(position)
 
         def jump_previous_fail(self):
             """ Called when the skip previous button is pressed """
@@ -320,8 +312,7 @@ try:
             position = 0
             if tamanho != 0:
                 position = destino / tamanho
-            self.player.set_position(position)
-            self.get_track_info()
+            self.set_position(position)
                 
         def reset_pause_play(self):
             """ Reset pause play buttons after skipping tracks """
@@ -388,6 +379,14 @@ try:
             else:
                 self.window['EXPORT'].Update(disabled=False)
 
+        def set_position(self, arg):
+            self.player.audio_set_mute(True)
+            sleep(0.05)
+            self.player.set_position(arg)
+            sleep(0.05)
+            self.player.audio_set_mute(False)
+            self.get_track_info()
+
     def select_config_window(license_result):
         lg = config_select(license_result, size=(500, 500), scale=0.5)
         lg.window.force_focus()
@@ -440,6 +439,9 @@ try:
             else:
                 l.append(e)
         mp.window['LISTA'].update(l)
+
+   
+
     
     def main():
         select_config_window(license_result)
@@ -456,23 +458,20 @@ try:
                 EXIT()
 
             if event == "Open config":
+                mp.stop()
                 l.clear()
                 mp.window['LISTA'].update(l)
-                mp.stop()
-                calendar_event(mp)
                 mp.window.Hide()
                 select_config_window(license_result)
+                calendar_event(mp)
                 mp.window.UnHide()
             
-            if event == 'MouseWheel:Down':
-                mp.player.set_position(mp.values['TIME']-(0.0003/(mp.player.get_length()/3600000)))
-                mp.get_track_info()
-                sleep(0.05)
-                
             if event == 'MouseWheel:Up':
-                mp.player.set_position(mp.values['TIME']+(0.0003/(mp.player.get_length()/3600000)))
-                mp.get_track_info()
-                sleep(0.05)
+                mp.set_position(mp.values['TIME']-(0.0003/(mp.player.get_length()/3600000)))
+                
+            if event == 'MouseWheel:Down':
+                mp.set_position(mp.values['TIME']+(0.0003/(mp.player.get_length()/3600000)))
+                
                 
             if event == 'About...':
                 sg.Popup("Feito por:", "Eng. Cristian Ritter", "cristianritter@gmail.com", title="Sobre o aplicativo")
@@ -485,37 +484,31 @@ try:
             
             if event == 'FORWARD_1':
                 limite = 0.0003/(mp.player.get_length()/3600000)
-                mp.player.set_position(mp.values['TIME']+limite)
-                mp.get_track_info()
+                mp.set_position(mp.values['TIME']+limite)
 
             if event == 'FORWARD_10':
                 limite = 0.0028/(mp.player.get_length()/3600000)
-                mp.player.set_position(mp.values['TIME']+limite)
-                mp.get_track_info()
+                mp.set_position(mp.values['TIME']+limite)
 
             if event == 'REWIND':
                 mp.jump_previous_fail()
 
             if event == 'REWIND_1':
                 limite = 0.0003/(mp.player.get_length()/3600000)
-                mp.player.set_position(mp.values['TIME']-limite)
-                mp.get_track_info()
+                mp.set_position(mp.values['TIME']-limite)
 
             if event == 'REWIND_10':
                 limite = 0.0028/(mp.player.get_length()/3600000)
-                mp.player.set_position(mp.values['TIME']-limite)
-                mp.get_track_info()
+                mp.set_position(mp.values['TIME']-limite)
 
             if event == 'TIME':
                 if round(mp.values['TIME'],3) == round(mp.time_old,3):
                     continue
                 limite = 0.002/(mp.player.get_length()/3600000)
                 if mp.values['TIME'] > (1-limite):
-                    mp.player.set_position(mp.values['TIME']-limite)
+                    mp.set_position(mp.values['TIME']-limite)
                 else:
-                    mp.player.set_position(mp.values['TIME'])
-                mp.get_track_info()
-                sleep(0.1)
+                    mp.set_position(mp.values['TIME'])
                 
             if event == 'LOG':
                 if (len(mp.values['CALENDAR'])) == 0:
