@@ -177,7 +177,7 @@ try:
                 # Elements for tracking media length and track counts
                 sg.Text('00:00', key='TIME_TOTAL')],
               
-                [sg.Graph(canvas_size=(self.player_size[0], 20), graph_bottom_left=(-57, 0), graph_top_right=(840, 20), background_color=self.default_bg_color, enable_events=True, key='GRAPHY')],
+                [sg.Graph(canvas_size=(self.player_size[0], 20), graph_bottom_left=(-57, 0), graph_top_right=(840, 20), background_color=self.default_bg_color, enable_events=True, key='GRAPH')],
                 
                 # Button and media information layout (created above)
                 [sg.Column(buttons_group), sg.Column(info_column), sg.Column(coluna_export,background_color='black', element_justification='center') ]
@@ -364,15 +364,15 @@ try:
                         self.failtimes_list.append(pos) #seconds
                     
             segundos_total = self.player.get_length() / 1000
-            graph = self.window['GRAPHY']  
+            graph = self.window['GRAPH']
             graph.DrawRectangle((-0, 0), (self.player_size[0]-180,20), fill_color='black')
-            graph.update()
             window_size = self.player_size[0]-180
             for item in self.failtimes_list:
                 graph.DrawLine (((window_size/segundos_total)*item, 0), ((window_size/segundos_total)*item, 20), color='red', width = 4)
             for item in self.returntimes_list:
                 graph.DrawLine (((window_size/segundos_total)*item, 0), ((window_size/segundos_total)*item, 20), color='white', width = 3)
-
+            graph.update()
+            
         def is_in_out_ok(self):
             begin_seconds = int(self.values['IN_TEXT'][0:2])*60 + int(self.values['IN_TEXT'][3:5]) 
             end_seconds = int(self.values['OUT_TEXT'][0:2])*60 + int(self.values['OUT_TEXT'][3:5])
