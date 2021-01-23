@@ -343,7 +343,8 @@ try:
         
         def redraw_fail_positions(self, values):
             self.failtimes_list.clear()
-            self.returntimes_list.clear()  
+            self.returntimes_list.clear()
+            self.jump_list.clear()  
 
             lognm = "log_"+values['CALENDAR'][0:6]+".txt"
             logfile = os.path.join(log_folder, lognm)
@@ -371,9 +372,9 @@ try:
             graph.DrawRectangle((-0, 0), (self.player_size[0]-180,20), fill_color='black')
             window_size = self.player_size[0]-180
             for segundos_atual in self.failtimes_list:
-                graph.DrawLine (((window_size/segundos_total)*segundos_atual, 0), ((window_size/segundos_total)*segundos_atual, 20), color='red', width = 4)
-            for item in self.returntimes_list:
-                graph.DrawLine (((window_size/segundos_total)*segundos_atual, 0), ((window_size/segundos_total)*segundos_atual, 20), color='white', width = 3)
+                graph.DrawLine (  ((window_size/segundos_total)*segundos_atual, 0), ((window_size/segundos_total)*segundos_atual, 20), color='red', width = 4)
+            for segundos_atual in self.returntimes_list:
+                graph.DrawLine (  ((window_size/segundos_total)*segundos_atual, 0), ((window_size/segundos_total)*segundos_atual, 20), color='white', width = 3)
             graph.update()
             
         def is_in_out_ok(self):
