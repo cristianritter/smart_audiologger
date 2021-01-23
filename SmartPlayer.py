@@ -554,7 +554,7 @@ try:
 
             if event == 'LISTA':
                 mp.stop()
-                if (len(mp.values['LISTA'])) == 0:
+                if not 'LISTA' in mp.values:
                     continue
                 filename = mp.get_current_audio_filepath(mp.values)
                 if not os.path.exists(filename):
