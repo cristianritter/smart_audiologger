@@ -17,19 +17,21 @@ import os
 from subprocess import check_output
 from threading import Thread
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
+
 print("Carregando DLLS...")
 try:
-    os.add_dll_directory(os.getcwd())
+    #os.add_dll_directory(os.getcwd())
     try:
-        pass
-        os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
+        VLC_DIR = os.path.join(ROOT_DIR, 'VLC')
+        os.add_dll_directory(r'{}'.format(VLC_DIR))
+        #os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
     except Exception as Err:
         sg.popup('VLC - '+str(Err))
         EXIT()
     print("Importando VLC...")
     import vlc
 
-    ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
     ASSETS_PATH = os.path.join(ROOT_DIR, 'Assets/') 
     BUTTON_DICT = {img[:-4].upper(): ASSETS_PATH + img for img in os.listdir(ASSETS_PATH)}
     DEFAULT_IMG = ASSETS_PATH + 'background3.png'

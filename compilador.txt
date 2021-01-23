@@ -1,0 +1,1 @@
+pyinstaller -D --onedir --icon=player.ico --windowed --version-file=player_version.vfl SmartPlayer.py
