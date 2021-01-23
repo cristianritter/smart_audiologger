@@ -23,7 +23,7 @@ print("Carregando DLLS...")
 try:
     #os.add_dll_directory(os.getcwd())
     try:
-        VLC_DIR = os.path.join(ROOT_DIR, 'VLC')
+        VLC_DIR = os.path.join(ROOT_DIR, 'VLC\\')
         os.add_dll_directory(r'{}'.format(VLC_DIR))
         #os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
     except Exception as Err:

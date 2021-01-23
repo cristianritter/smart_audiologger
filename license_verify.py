@@ -20,7 +20,7 @@ class ativacao:
         """ Create GUI instance """
         sg.change_look_and_feel(self.theme)
         main_layout = [
-            [sg.Text('SmartAudiLogger', font='Fixedsys 45 ', text_color='White', tooltip="By SmartLogger®")],
+            [sg.Text('SmartAudioLogger', font='Fixedsys 45 ', text_color='White', tooltip="By SmartLogger®")],
             [sg.Text('Não encontramos uma licença válida.', font='Fixedsys 12 bold', text_color='gray')],
             [sg.Input(self.codigo, size=(30,4), readonly=True, font='Courier 15', text_color='black', background_color='black' )],
             [sg.Text("Solicite o código de ativação enviando o codigo acima para o desenvolvedor.", font='Fixedsys 12 bold', text_color='gray')],
