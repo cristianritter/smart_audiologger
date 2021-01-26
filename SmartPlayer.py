@@ -24,7 +24,11 @@ try:
     #os.add_dll_directory(os.getcwd())
     try:
         VLC_DIR = os.path.join(ROOT_DIR, 'VLC\\')
+        SOX_DIR = os.path.join(ROOT_DIR, 'sox-14-4-1\\')
+        SOX = os.path.join(SOX_DIR, 'sox')
+        
         os.add_dll_directory(r'{}'.format(VLC_DIR))
+        os.add_dll_directory(r'{}'.format(SOX_DIR))
         #os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
     except Exception as Err:
         sg.popup('VLC - '+str(Err))
@@ -551,7 +555,7 @@ try:
                 end_seconds = int(mp.values['OUT_TEXT'][0:2])*60 + int(mp.values['OUT_TEXT'][3:5])
                 
                 dest = os.path.join(mp.values['EXPORT'], filename[len(filename)-1]+'_'+str(begin_seconds)+'_'+str(end_seconds)+'.mp3')
-                check_output("sox {} {} trim {} {}".format(current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
+                check_output("{} {} {} trim {} {}".format(SOX, current_filepath,dest,begin_seconds,(end_seconds-begin_seconds)))
                 sg.popup("Que legal! O arquivo já está disponível na pasta: ", dest)
                 pass
 
