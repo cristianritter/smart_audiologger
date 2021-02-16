@@ -4,9 +4,8 @@ try:
     from threading import Thread
     import parse_config
     from time import sleep
-    from subprocess import check_output
+    from subprocess import check_output, Popen, PIPE
     import os.path
-    import sox
     from struct import unpack
     from wave import open
     import license_verify
@@ -16,6 +15,16 @@ try:
     import telegram_sender
     from shutil import rmtree
 
+    ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
+    print("Carregando DLLS...")
+    try:
+        SOX_DIR = os.path.join(ROOT_DIR, 'sox-14-4-1')
+        SOX = os.path.join(SOX_DIR, 'sox')     
+        os.add_dll_directory(r'{}'.format(SOX_DIR))
+    except Exception as Err:
+        print('DLL ERROR - '+str(Err))
+        EXIT()
+
     print ("Carregando configurações... ")
     configuration = parse_config.ConfPacket()
     configs = configuration.load_config('FILES, AUDIO_PARAM, DETECTION_PARAM')
@@ -24,6 +33,7 @@ try:
     temp_file = os.path.join(temp_folder,'temp.wav')
     silence_offset = float(configs['DETECTION_PARAM']['silence_offset']) 
     stereo_offset = float(configs['DETECTION_PARAM']['stereo_offset'])
+    default_attempts_value = int(configs['DETECTION_PARAM']['fp_attempts'])
     similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
     INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
     AUDIO_COMPRESSION = configs['AUDIO_PARAM']['compression']
@@ -33,7 +43,6 @@ try:
     NAME = configs['FILES']['name']
     LIFETIME = int(configs['FILES']['lifetime'])
 
-    default_attempts_value = 3
     attemps = default_attempts_value
     status = 5
 
@@ -47,10 +56,10 @@ try:
 
     def finaliza(definitive_hour_file, definitive_partial_file, comm_append_partial, comm_append_synth):
         definitive_full_file = definitive_hour_file[:-4]+'_full.mp3'
-        comm_append_final = '"|sox {} -C {} -c {} -p"'.format(
-                            definitive_hour_file, AUDIO_COMPRESSION, CHANNELS)
-        comando = 'sox --combine concatenate {} {} {}  {}'.format(
-                        comm_append_partial, comm_append_synth, comm_append_final, definitive_full_file)    
+        comm_append_final = '"| {} {} -C {} -c {} -p"'.format(
+                            SOX, definitive_hour_file, AUDIO_COMPRESSION, CHANNELS)
+        comando = ' {} --combine concatenate {} {} {}  {}'.format(
+                        SOX, comm_append_partial, comm_append_synth, comm_append_final, definitive_full_file)    
         check_output(comando)
 
         try:
@@ -92,17 +101,22 @@ try:
                         os.remove(definitive_hour_file_old)
                     os.rename(definitive_hour_file, definitive_hour_file_old)
                     print('Organizando arquivos ...')
-                    check_output('sox {} {} {}'.format(
-                            definitive_partial_file, definitive_hour_file_old, definitive_hour_file
+                    check_output('{} {} {} {}'.format(
+                            SOX, definitive_partial_file, definitive_hour_file_old, definitive_hour_file
                                             ))
                     os.remove(definitive_partial_file)
                     os.remove(definitive_hour_file_old)
                 
                 print('Criando arquivo parcial...')
                 os.rename(definitive_hour_file, definitive_partial_file)
-                partial_record_length = int(sox.file_info.stat(definitive_partial_file)['Length (seconds)']) 
-                comm_append_partial = '"|sox {} -C {} -c {} -p"'.format(
-                            definitive_partial_file, AUDIO_COMPRESSION, CHANNELS)
+                #partial_record_length = int(sox.file_info.stat(definitive_partial_file)['Length (seconds)']) 
+                partial_record_length = float(
+                    check_output('{} --i -D {}'.format(
+                            SOX, definitive_partial_file))
+                    #sox.file_info.stat(definitive_partial_file)['Length (seconds)']
+                    ) 
+                comm_append_partial = '"|{} {} -C {} -c {} -p"'.format(
+                            SOX, definitive_partial_file, AUDIO_COMPRESSION, CHANNELS)
                 print('Comprimento do audio parcial encontrado: ', partial_record_length)
 
             current_record_length = 3599 - current_seconds()                    
@@ -110,11 +124,11 @@ try:
             print('Partial record length: ', partial_record_length)
             print('Tempo de  gravação nesta hora: ', current_record_length, 'Enxerto de silencio: ', silence_time)                             
             if silence_time > 2:
-                comm_append_synth = '"|sox -n -C {} -c {} -p synth {} pl D2"'.format(
-                            AUDIO_COMPRESSION, CHANNELS, silence_time)
+                comm_append_synth = '"|{} -n -C {} -c {} -p synth {} pl D2"'.format(
+                            SOX, AUDIO_COMPRESSION, CHANNELS, silence_time)
 
-            comm_gravacao = 'sox -q -t waveaudio {} -C {} -c {} {} gain {} trim 0 {}'.format(
-                        AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, INPUT_GAIN, current_record_length)
+            comm_gravacao = '{} -q -t waveaudio {} -C {} -c {} {} gain {} trim 0 {}'.format(
+                        SOX, AUDIO_DEVICE, AUDIO_COMPRESSION, CHANNELS, definitive_hour_file, INPUT_GAIN, current_record_length)
 
             print('Iniciando a gravação. Current seconds=', current_seconds())
             check_output(comm_gravacao)
@@ -156,30 +170,41 @@ try:
         temp_monoCH1 = os.path.join(temp_folder,'monoCH1.wav')
         temp_monoCH2 = os.path.join(temp_folder,'monoCH2.wav')
     
-        tfm = sox.Transformer()
-        tfm.oops()
-        remixch1_dictionary = {1: [1], 2: [1] }
-        monoch1 = sox.Transformer()
-        monoch1.remix(remixch1_dictionary)
-        remixch2_dictionary = {1: [2], 2: [2] }
-        monoch2 = sox.Transformer()
-        monoch2.remix(remixch2_dictionary)
+        check_output('{} {} {} remix 1,2i 1,2i'.format(
+                            SOX, temp_file, temp_out_of_phase
+                                            ))
+
+        check_output('{} {} {} remix 1 1'.format(
+                            SOX, temp_file, temp_monoCH1
+                                            ))
         
-        tfm.build_file(temp_file,temp_out_of_phase)
-        monoch1.build_file(temp_file,temp_monoCH1)
-        monoch2.build_file(temp_file,temp_monoCH2)
-        temp_stat = sox.file_info.stat(temp_file)
-        oops_stat = sox.file_info.stat(temp_out_of_phase)
-        monoch1_stat = sox.file_info.stat(temp_monoCH1)
-        monoch2_stat = sox.file_info.stat(temp_monoCH2)
+        check_output('{} {} {} remix 2 2'.format(
+                            SOX, temp_file, temp_monoCH2
+                                            ))
+       
+        temp_stat = Popen('{} {} -n stat'.format(
+                            SOX, temp_file ), stdout=None, stderr=PIPE ).communicate()[1].decode()
+        oops_stat = Popen('{} {} -n stat'.format(
+                            SOX, temp_out_of_phase ), stdout=None, stderr=PIPE).communicate()[1].decode()
+        monoch1_stat = Popen('{} {} -n stat'.format(
+                            SOX, temp_monoCH1 ), stdout=None, stderr=PIPE).communicate()[1].decode()
+        monoch2_stat = Popen('{} {} -n stat'.format(
+                            SOX, temp_monoCH2 ), stdout=None, stderr=PIPE).communicate()[1].decode()
+
+        temp_stat =  float(temp_stat[temp_stat.find('RMS     amplitude')+23:temp_stat.find('RMS     amplitude')+31])
+        oops_stat =  float(oops_stat[oops_stat.find('RMS     amplitude')+23:oops_stat.find('RMS     amplitude')+31])
+        monoch1_stat =  float(monoch1_stat[monoch1_stat.find('RMS     amplitude')+23:monoch1_stat.find('RMS     amplitude')+31])
+        monoch2_stat =  float(monoch2_stat[monoch2_stat.find('RMS     amplitude')+23:monoch2_stat.find('RMS     amplitude')+31])
+        
         os.remove(temp_monoCH1)
         os.remove(temp_monoCH2)
         os.remove(temp_out_of_phase)    
+
         retorno = {}
-        retorno['oopsRMS']=oops_stat['RMS     amplitude']
-        retorno['tempRMS']=temp_stat['RMS     amplitude']
-        retorno['CH1RMS']=monoch1_stat['RMS     amplitude']
-        retorno['CH2RMS']=monoch2_stat['RMS     amplitude']
+        retorno['oopsRMS']=oops_stat
+        retorno['tempRMS']=temp_stat
+        retorno['CH1RMS']=monoch1_stat
+        retorno['CH2RMS']=monoch2_stat
         return retorno
 
     def verificar_silencio(infos):
@@ -233,51 +258,44 @@ try:
         oops_results = verificar_oops_RMS(infos)
         if verificar_silencio(infos):
             attemps = default_attempts_value
+            print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
             if status != 0:
-                print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
                 save_log.adiciona_linha_log("Silence Detected. Ch1 Lvl:{} Ch2 lvl: {}".format(infos['CH1RMS'], infos['CH2RMS']),(INPUT_BLOCK_TIME*-2))
                 telegram_sender.send_message(NAME+' - Silence detected.')
                 zabbix_metric.send_status_metric(NAME+" - Silence Detected")
                 status = 0
-            else:
-                print("Silence Detected. Ch1 Lvl:{:.4f} Ch2 lvl: {:.4f}".format(infos['CH1RMS'], infos['CH2RMS']))
             
-        
         elif verificar_clipped():
             attemps = default_attempts_value
+            print("Clipped audio detected. Tunning problem or Input volume too high.")
             if status != 1:
-                print("Clipped audio detected. Tunning problem or Input volume too high.")
                 save_log.adiciona_linha_log("Clipped audio detected. Tunning problem or Input volume too high.",(INPUT_BLOCK_TIME*-1))
                 telegram_sender.send_message(NAME+' - Clipped Audio detected.')
                 zabbix_metric.send_status_metric(NAME+" - Clipped Audio Detected")
                 status = 1
-            else:
-                print("Clipped audio detected. Tunning problem or Input volume too high.")
-        
+           
         elif oops_results['value'] and fingerprint_results['value']:
             if attemps <= 1:
+                print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                 if status != 2:
-                    print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                     save_log.adiciona_linha_log("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']), time_offset=(INPUT_BLOCK_TIME*-1*(default_attempts_value+1)))
                     telegram_sender.send_message(NAME+' - Tunning failure Detected')
                     zabbix_metric.send_status_metric(NAME+" - Tunning failure Detected")
                     status= 2
-                else:
-                    print("Tuning failure detected. Stereo Gap {:.4f} and Fingerprint Similarity {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
             else:
                 print("Appears to be a Tuning failure ...  Stereo Gap: {:.4f} and Fingerprint Similarity: {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
+                zabbix_metric.send_status_metric(NAME+" - Appears to be a Tuning failure")
+                save_log.adiciona_linha_log("Appears to be a Tuning failure ...  Stereo Gap: {:.4f} and Fingerprint Similarity: {:.2f}".format(oops_results['oopsRMS'],fingerprint_results['similarity']))
                 attemps -=1
         
         else:
             attemps = default_attempts_value
+            print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
+            zabbix_metric.send_status_metric(NAME+" - On Air")
             if status != 3:
-                print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
                 save_log.adiciona_linha_log("On Air Ch1 lvl:{} Ch1 lvl:{} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']), time_offset=(INPUT_BLOCK_TIME*-1))
                 telegram_sender.send_message(NAME+' - On Air.')
                 status= 3
-            else:       
-                print("On Air Ch1 lvl:{:.4f} Ch1 lvl:{:.4f} stereo:{:.4f} fingerprint:{:.2f}".format(infos['CH1RMS'], infos['CH2RMS'], oops_results['oopsRMS'], fingerprint_results['similarity']))
-                zabbix_metric.send_status_metric(NAME+" - On Air")
                 
     def carregar_licenca():
         License = license_verify.Lic()
@@ -312,7 +330,7 @@ try:
         while 1:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
-            check_output('sox -q -t waveaudio {} -c {} -d {} gain {} trim 0 {}'.format(AUDIO_DEVICE, CHANNELS, temp_file, INPUT_GAIN, INPUT_BLOCK_TIME) )
+            check_output('{} -q -t waveaudio {} -c {} -d {} gain {} trim 0 {}'.format(SOX, AUDIO_DEVICE, CHANNELS, temp_file, INPUT_GAIN, INPUT_BLOCK_TIME) )
             sleep(0.1)
             infos = file_stats(temp_file)
             print("\n")

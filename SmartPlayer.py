@@ -31,8 +31,9 @@ try:
         os.add_dll_directory(r'{}'.format(SOX_DIR))
         #os.add_dll_directory(r'C:\Program Files (x86)\VideoLAN\VLC')
     except Exception as Err:
-        sg.popup('VLC - '+str(Err))
+        sg.popup('DLL ERROR - '+str(Err))
         EXIT()
+        
     print("Importando VLC...")
     import vlc
 

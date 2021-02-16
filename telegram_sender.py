@@ -71,6 +71,9 @@ try:
             for name in TELEGRAM_CLIENTS_FOLDERS:
                 if name.upper() in texto.upper():
                     file = os.path.join(configs['TELEGRAM_CLIENTS_FOLDERS'][name], 'chat_id.txt')
+                else:
+                    print ("Verifique a configuração dos Telegram Client Folders")
+                    return
             if not os.path.exists(file):
                 print("Arquivo de chats do telegram não encontrado, verifique configuração TELEGRAM_CLIENTS_FOLDERS")
             ids = get_chat_ids(file)
@@ -83,7 +86,7 @@ try:
     def receive_msg(update, context):
         print("Mensagem Recebida via Telegram.")
         for name in TELEGRAM_CLIENTS_FOLDERS:
-            if name.lower() in str(update.message.text).lower():   
+            if name.lower() in str(update.message.text).lower().split(' '):   
                 if 'CADASTRAR' in str(update.message.text).upper():
                     adiciona_chat_id(update.effective_chat.id, configs['TELEGRAM_CLIENTS_FOLDERS'][name])
                     send_message("Você foi cadastrado para receber alertas de {}.".format(name.upper()), update.effective_chat.id)
