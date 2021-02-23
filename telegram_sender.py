@@ -11,7 +11,6 @@ try:
     TOKEN = configs['TELEGRAM_SERVER']['token']
 
     TELEGRAM_CLIENTS_FOLDERS = configs['TELEGRAM_CLIENTS_FOLDERS']
-
     updater = Updater(token=TOKEN, use_context=True)
 
     for item in TELEGRAM_CLIENTS_FOLDERS:
@@ -66,22 +65,24 @@ try:
         return clean_ids
 
     def send_message(texto, to='all'):
+        #print('texto:',texto.upper())
         global updater
         if to == 'all':
             for name in TELEGRAM_CLIENTS_FOLDERS:
+                #print(name.upper())
                 if name.upper() in texto.upper():
                     file = os.path.join(configs['TELEGRAM_CLIENTS_FOLDERS'][name], 'chat_id.txt')
-                else:
-                    print ("Verifique a configuração dos Telegram Client Folders")
+                    if not os.path.exists(file):
+                        print("Arquivo de chats do telegram não encontrado, verifique configuração TELEGRAM_CLIENTS_FOLDERS")
+                        return
+                    ids = get_chat_ids(file)
+                    for item in ids:
+                        updater.bot.send_message(chat_id=item, text=texto)
                     return
-            if not os.path.exists(file):
-                print("Arquivo de chats do telegram não encontrado, verifique configuração TELEGRAM_CLIENTS_FOLDERS")
-            ids = get_chat_ids(file)
-            for item in ids:
-                updater.bot.send_message(chat_id=item, text=texto)
+            print ("Nome de config não encontrado. Verifique a configuração dos Telegram Client Folders")
+            return
         else:
-            updater.bot.send_message(chat_id=to, text=texto)
-                                    
+            updater.bot.send_message(chat_id=to, text=texto)                   
 
     def receive_msg(update, context):
         print("Mensagem Recebida via Telegram.")

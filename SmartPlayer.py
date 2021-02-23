@@ -379,8 +379,10 @@ try:
             graph.DrawRectangle((-0, 0), (self.player_size[0]-180,20), fill_color='black')
             window_size = self.player_size[0]-180
             for segundos_atual in self.failtimes_list:
+                segundos_atual = segundos_atual * (segundos_total/3599)
                 graph.DrawLine (  ((window_size/segundos_total)*segundos_atual, 0), ((window_size/segundos_total)*segundos_atual, 20), color='red', width = 4)
             for segundos_atual in self.returntimes_list:
+                segundos_atual = segundos_atual * (segundos_total/3599)
                 graph.DrawLine (  ((window_size/segundos_total)*segundos_atual, 0), ((window_size/segundos_total)*segundos_atual, 20), color='white', width = 3)
             graph.update()
             
