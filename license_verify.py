@@ -131,8 +131,7 @@ def janela_de_ativacao(id_software, codigo_de_maquina, final_cod):
             if values['ATIVAR'] == final_cod:
                 sg.popup("Ativado. Reinicie o software.")
                 adiciona_licenca(final_cod)
-                EXIT()
-                
+                EXIT()              
     lg.window.Close()
 
 def main():

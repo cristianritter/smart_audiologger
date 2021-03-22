@@ -1,1 +1,5 @@
 pyinstaller -D --onedir --icon=player.ico --windowed --version-file=player_version.vfl SmartPlayer.py
+
+pyinstaller -D --onedir --ico=ico.ico --windowed --version-file=player_version.vfl --name=FolderSync .\folder_sync2.py
+
+pyinstaller -D --onedir --ico=str.ico --version-file=player_version.vfl --name=StreamingPlayer .\streaming_player.py
