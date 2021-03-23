@@ -14,6 +14,7 @@ try:
     import zabbix_metric
     import telegram_sender
     from shutil import rmtree
+    import pyaudio
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
     print("Carregando DLLS...")
@@ -37,11 +38,14 @@ try:
     similarity_tolerance = float(configs['DETECTION_PARAM']['similarity_tolerance'])
     INPUT_BLOCK_TIME = int(configs['AUDIO_PARAM']['input_block_time'])
     AUDIO_COMPRESSION = configs['AUDIO_PARAM']['compression']
-    AUDIO_DEVICE = int(configs['AUDIO_PARAM']['device_index'])
+    AUDIO_DEVICE = int(configs['AUDIO_PARAM']['audio_device'])
     CHANNELS = int(configs['AUDIO_PARAM']['channels'])
     INPUT_GAIN = int(configs['AUDIO_PARAM']['input_gain'])
     NAME = configs['FILES']['name']
     LIFETIME = int(configs['FILES']['lifetime'])
+
+    pa = pyaudio.PyAudio()
+    print(pa.get_device_info_by_index(AUDIO_DEVICE)["name"])
 
     attemps = default_attempts_value
     status = 5
