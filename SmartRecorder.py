@@ -15,6 +15,7 @@ try:
     import telegram_sender
     from shutil import rmtree
     import pyaudio
+    import list_devices
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
     print("Carregando DLLS...")
@@ -45,7 +46,7 @@ try:
     LIFETIME = int(configs['FILES']['lifetime'])
 
     pa = pyaudio.PyAudio()
-    print(pa.get_device_info_by_index(AUDIO_DEVICE)["name"])
+    print("Dispositivo de audio: ", pa.get_device_info_by_index(AUDIO_DEVICE)["name"])
 
     attemps = default_attempts_value
     status = 5

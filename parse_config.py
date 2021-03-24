@@ -2,7 +2,7 @@ import configparser
 import os.path
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # This is your Project Root
-print("Diretório do programa: ", ROOT_DIR)
+#print("Diretório do programa: ", ROOT_DIR)
 
 class ConfPacket:
     def __init__(self):
